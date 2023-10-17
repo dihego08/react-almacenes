@@ -4,86 +4,71 @@ import MapView, { Marker } from "react-native-maps";
 import * as Location from 'expo-location';
 
 export default () => {
-    const [userLocation, setLocation] = useState(null);
-    const [errorMsg, setErrorMsg] = useState(null);
-
-    const [puntos, setPuntos] = useState([{
-            "accuracy": 12.970999717712402,
-            "altitude": 2479.2998046875,
-            "altitudeAccuracy": 1.6438299417495728,
-            "heading": 0,
-            "latitude": -16.3924676,
-            "longitude": -71.5085223,
-            "speed": 0,
-          },
-          {
-            "accuracy": 12.970999717712402,
-            "altitude": 2479.2998046875,
-            "altitudeAccuracy": 1.6438299417495728,
-            "heading": 0,
-            "latitude": -16.3924676,
-            "longitude": -71.5085323,
-            "speed": 0,
-          },
-          {
-            "accuracy": 12.970999717712402,
-            "altitude": 2479.2998046875,
-            "altitudeAccuracy": 1.6438299417495728,
-            "heading": 0,
-            "latitude": -16.3924876,
-            "longitude": -71.5085223,
-            "speed": 0,
-          }
+    const [userLocation, setUserLocation] = useState(null);
+    const [locations, setLocations] = useState([
+        /*{ id: 1, coordinate: { latitude: 37.78825, longitude: -122.4324 }, title: 'Marker 1' },
+        { id: 2, coordinate: { latitude: 37.78845, longitude: -122.4326 }, title: 'Marker 2' },
+        { id: 3, coordinate: { latitude: -16.3971072, longitude: -71.51616 }, title: 'Marker 2' },*/
     ]);
-
-    const [curLoc, setCurLoc] = useState({
-        latitude: 5.055252,
-        longitude: 115.9456243,
-        latitudeDelta: 0.004757,
-        longitudeDelta: 0.006866,
-    })
-
-    /*marketToDisplay = [
-        { latitude: 5.7689, longitude: 110.5677 },
-        { latitude: 5.2345, longitude: 111.5623 },
-        { latitude: 5.6652, longitude: 112.7890 },
-    ]*/
-
-    //const newPuntos = puntos.concat({ coordinate: NativeEvent.coordinate });
 
     useEffect(() => {
         (async () => {
-
             let { status } = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
-                setErrorMsg('Permission to access location was denied');
                 return;
             }
 
             let location = await Location.getCurrentPositionAsync({});
-            setLocation(location);
+            setUserLocation(location.coords);
         })();
     }, []);
+    useEffect(() => {
+        // Llamada a una función que obtiene datos de ubicaciones desde una API
+        async function fetchLocationsFromAPI() {
+            try {
+                const response = await fetch('https://diegoaranibar.com/react/locations.php?accion=listar_ubicaciones');
+                const data = await response.json();
 
-    let text = 'Waiting..';
-    if (errorMsg) {
-        text = errorMsg;
-    } else if (userLocation) {
-        text = JSON.stringify(userLocation);
-        console.log(userLocation.coords);
-    }
+                // Agrega las ubicaciones de la API a la lista existente
+                const newLocations = data.map((item, index) => ({
+                    id: index + 3, // Comenzando desde 3 para evitar duplicados
+                    coordinate: { latitude: parseFloat(item.latitude), longitude: parseFloat(item.longitude) },
+                    title: "Ubicación de ejemplo",
+                }));
+                console.log(newLocations);
+
+                setLocations([...locations, ...newLocations]);
+            } catch (error) {
+                console.error('Error al obtener datos de la API:', error);
+            }
+        }
+
+        fetchLocationsFromAPI();
+    }, []);
     return (
-        <View style={styles.container}>
-            <Text>{text}</Text>
+        <View style={{ flex: 1 }}>
+            <MapView
+                style={{ flex: 1 }}
+                initialRegion={{
+                    latitude: userLocation ? userLocation.latitude : -16.3995927, // Latitud de tu ubicación actual
+                    longitude: userLocation ? userLocation.longitude : -71.5392708, // Longitud de tu ubicación actual
+                    latitudeDelta: 0.0922,
+                    longitudeDelta: 0.0421,
+                }}
+            >
+                <Marker
+                    coordinate={userLocation} // Marcador para tu ubicación actual
+                    title="Tu ubicación"
+                    pinColor="blue" // Puedes personalizar el color del marcador
+                />
 
-            <MapView style={styles.map} initialRegion={curLoc}>
-                {userLocation && <Marker coordinate={userLocation.coords} />}
-                {puntos.map((index) => {
-                    console.log(index);
+                {locations.map(location => (
                     <Marker
-                        coordinate={index}
+                        key={location.id}
+                        coordinate={location.coordinate}
+                        title={location.title}
                     />
-                })}
+                ))}
             </MapView>
         </View>
     );
