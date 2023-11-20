@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, Dimensions } from "react-native";
+import { StyleSheet, View, Text, Dimensions, Button } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as Location from 'expo-location';
 
@@ -70,7 +70,9 @@ export default () => {
                     />
                 ))}
             </MapView>
+            
         </View>
+        
     );
 }
 const styles = StyleSheet.create({

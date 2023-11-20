@@ -1,7 +1,13 @@
 import React, { useState, Component } from "react";
-import { StyleSheet, View, Text, Pressable, Button, TextInput, TouchableOpacity } from "react-native";
+import { StyleSheet, View, Text, Pressable, Button, Image, TextInput, TouchableOpacity } from "react-native";
 import Feather from 'react-native-vector-icons/Feather';
-
+import m_propietario from "../menus/m_propietario1";
+import m_distribuidor from "../menus/m_distribuidor";
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+//tutorial: https://www.youtube.com/watch?v=2xOTp6bxxd8
+//pagina: https://www.npmjs.com/package/react-native-icons
+//comando: npm i react-native-icons
+//iconos: https://oblador.github.io/react-native-vector-icons/
 
 export default class Login extends Component {
 	constructor(props) {
@@ -23,6 +29,7 @@ export default class Login extends Component {
 		} else {
 			console.log(Password);
 			var APIURL = "https://diegoaranibar.com/react/iniciarsesion.php";
+
 
 			var headers = {
 				'Accept': 'application/json',
@@ -62,67 +69,97 @@ export default class Login extends Component {
 		});
 	}
 	render() {
+		/*----BOTON MENU-PARTE1---*/
+		const { navigate } = this.props.navigation;
+		/*------------------------*/
 		return (
 			<View style={styles.viewStyle}>
-				<View style={styles.action}>
-					<TextInput
-						placeholder="Enter Email"
-						placeholderTextColor="#ff0000"
-						style={styles.textInput}
-						onChangeText={email => this.setState({ email })}
-					/>
+
+
+
+				<Text style={styles.titulo}>INICIAR SESIÓN</Text>
+				<Image style={styles.logo} source={require('../assets/imgs/LOGOOO.png')} />
+
+				<View style={styles.container}>
+
+					<View style={styles.action}>
+
+						<View style={styles.iconocirculo}>
+							<MaterialIcons name='account-circle' style={styles.iconos} />
+						</View>
+						<TextInput
+							placeholder="Usuario"
+							placeholderTextColor="#B2BABB"
+							style={styles.textInput}
+							onChangeText={email => this.setState({ email })}
+						/>
+					</View>
+
+					<View style={styles.action}>
+						<View style={styles.iconocirculo}>
+							<MaterialIcons name='vpn-key' style={styles.iconos} />
+						</View>
+						<TextInput
+							placeholder="Contraseña"
+							placeholderTextColor="#B2BABB"
+							style={styles.textInput}
+							secureTextEntry={this.state.secureTextEntry ? true : false}
+							onChangeText={password => this.setState({ password })}
+						/>
+						<TouchableOpacity
+							onPress={this.updateSecureTextEntry.bind(this)}>
+							{this.state.secureTextEntry ?
+								<Feather
+									name="eye-off"
+									color="grey"
+									size={22}
+									paddingTop={25}
+								/>
+								:
+								<Feather
+									name="eye"
+									color="black"
+									size={22}
+									paddingTop={25}
+								/>
+							}
+						</TouchableOpacity>
+					</View>
+
+
+					{/* Button */}
+
+					<View style={styles.loginButtonSection}>
+						<Pressable
+							style={styles.loginButton}
+							onPress={() => {
+								this.InsertRecord()
+							}}
+						>
+							<Text style={styles.textbtn}>Ingresar</Text>
+						</Pressable>
+					</View>
+
 				</View>
 
-				<View style={styles.action}>
-					<TextInput
-						placeholder="Enter Password"
-						placeholderTextColor="#ff0000"
-						style={styles.textInput}
-						secureTextEntry={this.state.secureTextEntry ? true : false}
-						onChangeText={password => this.setState({ password })}
-					/>
-					<TouchableOpacity
-						onPress={this.updateSecureTextEntry.bind(this)}>
-						{this.state.secureTextEntry ?
-							<Feather
-								name="eye-off"
-								color="grey"
-								size={20}
-							/>
-							:
-							<Feather
-								name="eye"
-								color="black"
-								size={20}
-							/>
-						}
-					</TouchableOpacity>
+				{/*----BOTON MENU-PARTE2---*/}
+				<View style={styles.botonmenus}>
+					<Button
+						title="Propietario"
+						onPress={() =>
+							navigate('MenúPropietarioI')}>
+					</Button>
 				</View>
 
-
-				{/* Button */}
-
-				<View style={styles.loginButtonSection}>
-					<Pressable
-						style={styles.loginButton}
-						onPress={() => {
-							this.InsertRecord()
-						}}
-					>
-						<Text style={styles.text}>Ingresar</Text>
-					</Pressable>
+				<View style={styles.botonmenus}>
+					<Button
+						title="Distribuidor"
+						onPress={() =>
+							navigate('MenúDistribuidor')}>
+					</Button>
 				</View>
+				{/*------------------------*/}
 
-				<View style={styles.loginButtonSection}>
-					<Pressable
-						style={styles.loginButton}
-						onPress={() => {
-							// this.InsertRecord()
-						}}
-					>
-						<Text style={styles.text}>Registrate</Text>
-					</Pressable>
-				</View>
 			</View>
 		);
 	}
@@ -131,37 +168,38 @@ const styles = StyleSheet.create({
 	viewStyle: {
 		flex: 1,
 		padding: 20,
-		marginTop: 50,
+		paddingTop: 80,
+		alignItems: 'center',
+		backgroundColor: '#f1f1f1',
 	},
-	textInput: {
-		borderBottomColor: '#ff0000',
-		borderBottomWidth: 1,
-		marginBottom: 50,
-		height: 40,
-		fontSize: 20,
-		flex: 1,
-	},
-	button: {
+	container: {
+		padding: 20,
+		backgroundColor: '#ffffff',
 		alignItems: 'center',
 		justifyContent: 'center',
-		height: 35,
-		width: 150,
-		borderRadius: 10,
-		backgroundColor: 'black',
+		borderRadius: 40,
+		elevation: 10,
 	},
+	textInput: {
+		paddingStart: 30,
+		marginTop: 10,
+		marginBottom: 10,
+		height: 50,
+		fontSize: 17,
+		flex: 1,
+		borderRadius: 30,
+		backgroundColor: '#F4F6F6',
+	},
+
 	action: {
 		flexDirection: 'row',
 		marginTop: 10,
-		paddingBottom: 5,
-		width: '100%'
+		width: '90%'
 	},
-	text: {
+	textbtn: {
 		fontSize: 18,
-		lineHeight: 21,
 		fontWeight: 'bold',
-		letterSpacing: 0.25,
 		color: 'white',
-		textTransform: 'uppercase'
 	},
 	loginButtonSection: {
 		width: '100%',
@@ -171,13 +209,45 @@ const styles = StyleSheet.create({
 		alignItems: 'center'
 	},
 	loginButton: {
-		backgroundColor: '#06baab',
+		backgroundColor: '#0000CC',
 		color: 'white',
-		height: 35,
+		height: 40,
+		width: 180,
 		justifyContent: 'center', //up dwn
 		alignItems: 'center',  //r & l
-		width: '70%',
-		borderRadius: 10,
 
-	}
+		borderRadius: 30,
+		elevation: 5,
+
+	},
+	botonmenus: {
+		padding: 10,
+	},
+	logo: {
+		width: 130,
+		height: 130,
+		marginTop: 20,
+		marginBottom: 10,		
+	},
+	titulo: {
+		fontSize: 30,
+		color: '#0000CC',
+		fontWeight: 'bold',
+	},
+	iconocirculo: {
+		height: 40,
+		width: 40,
+		backgroundColor: '#0000CC',
+		alignSelf: 'center',
+		borderRadius: 40,
+		elevation: 10,
+		marginLeft: 5,
+		marginRight: 3,
+	},
+	iconos: {
+		fontSize: 28,
+		paddingTop: 6,
+		paddingLeft: 6,
+		color: '#fff',
+	},
 });
