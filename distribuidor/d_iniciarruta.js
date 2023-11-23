@@ -6,7 +6,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import * as Location from 'expo-location';
 
 
-export default () => {
+export default (props) => {
 
     const [locationUpdates, setLocationUpdates] = useState([]);
     const [distance, setDistance] = useState(0);
@@ -18,7 +18,8 @@ export default () => {
     const [imageSource, setImageSource] = useState(require('../assets/imgs/btn_iniciarruta.png'));
     var coordsAnterior = null;
     var auxiliar = 0;
-
+    const id = props.navigation.state.params;
+    console.log(props.navigation.state.params);
     useEffect(() => {
         (async () => {
             let { status } = await Location.requestForegroundPermissionsAsync();
@@ -96,7 +97,7 @@ export default () => {
                 latitude: locations[0].latitude,
                 longitude: locations[0].longitude,
                 speed: locations[0].speed,
-                id_usuario: 1,
+                id_usuario: id,
                 id_vehiculo: 1,
                 kilometraje: distance,
                 _tiempo: transcurrido

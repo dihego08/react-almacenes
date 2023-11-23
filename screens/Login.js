@@ -55,7 +55,7 @@ export default class Login extends Component {
 						if (Response[0].Role == 1) {
 							this.props.navigation.push("MenúPropietarioI");//navigate('MenúPropietarioI')
 						} else {
-							this.props.navigation.push("MenúDistribuidor");
+							this.props.navigation.push("MenúDistribuidor", Response[0].id);
 						}
 					}
 					console.log(Data);

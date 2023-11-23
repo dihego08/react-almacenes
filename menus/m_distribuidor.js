@@ -13,6 +13,8 @@ export default class m_propietario extends Component {
 
         /*----BOTON MENU-PARTE1---*/
 		const { navigate } = this.props.navigation;
+        const id = this.props.navigation.state.params;
+        console.log("EL PARAMETRO " + this.props.navigation.state.params);
 
 		return (
             <View style={styles.viewStyle}>
@@ -39,7 +41,7 @@ export default class m_propietario extends Component {
 
                     <View style={styles.menu}>
                         <Pressable
-                            onPress={() => navigate('IniciarRuta')}
+                            onPress={() => navigate('IniciarRuta', id)}
                             style={({ pressed }) => {
                                 return { opacity: pressed ? 0 : 1 }
                             }}>
