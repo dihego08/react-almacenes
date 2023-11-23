@@ -119,7 +119,7 @@ const AppNavigator = createStackNavigator({
 		screen: LocationScreen
 	}
 }, {
-	initialRouteName: 'Home'
+	initialRouteName: 'IniciarRuta'
 });
 export default createAppContainer(AppNavigator);
 

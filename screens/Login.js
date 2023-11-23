@@ -48,11 +48,15 @@ export default class Login extends Component {
 			})
 				.then((Response) => Response.json())
 				.then((Response) => {
-					alert(Response[0].Message)
 					if (Response[0].Message == "Success") {
 						console.log("true")
 						//this.props.navigation.navigate("Home");
-						this.props.navigation.push("Detalle");
+						//this.props.navigation.push("Detalle");
+						if (Response[0].Role == 1) {
+							this.props.navigation.push("MenúPropietarioI");//navigate('MenúPropietarioI')
+						} else {
+							this.props.navigation.push("MenúDistribuidor");
+						}
 					}
 					console.log(Data);
 				})
@@ -227,7 +231,7 @@ const styles = StyleSheet.create({
 		width: 130,
 		height: 130,
 		marginTop: 20,
-		marginBottom: 10,		
+		marginBottom: 10,
 	},
 	titulo: {
 		fontSize: 30,
