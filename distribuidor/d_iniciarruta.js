@@ -18,8 +18,8 @@ export default (props) => {
     const [imageSource, setImageSource] = useState(require('../assets/imgs/btn_iniciarruta.png'));
     var coordsAnterior = null;
     var auxiliar = 0;
-    const id = props.navigation.state.params;
-    console.log(props.navigation.state.params);
+    var laHoraInicio;
+    const id = 1;//props.navigation.state.params;
     useEffect(() => {
         (async () => {
             let { status } = await Location.requestForegroundPermissionsAsync();
@@ -40,7 +40,8 @@ export default (props) => {
         setIsActive(newState);
         // Ejecuta la función si isActive es verdadero
         if (newState) {
-            setHoraInicio(getCurrentTime());
+            laHoraInicio = getCurrentTime();
+            setHoraInicio(laHoraInicio);
             getCurrentLocationAndSendToAPI();
             const iId = setInterval(() => {
                 getCurrentLocationAndSendToAPI();
@@ -86,8 +87,24 @@ export default (props) => {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
             };
-            const transcurrido = calculateTimeDifference(getCurrentTime());
+            //const transcurrido = calculateTimeDifference(getCurrentTime());
+
             //setTiempo(transcurrido);
+
+            const startDate = new Date('2023-11-01T' + laHoraInicio + 'Z'); // Fecha inicial (puedes usar cualquier fecha)
+            const endDate = new Date('2023-11-01T' + getCurrentTime() + 'Z'); // Fecha actual
+            console.log(laHoraInicio);
+            console.log(getCurrentTime());
+            const differenceInMilliseconds = endDate - startDate;
+            const differenceInSeconds = Math.floor(differenceInMilliseconds / 1000);
+            const differenceInMinutes = Math.floor(differenceInSeconds / 60);
+            const differenceInHours = Math.floor(differenceInMinutes / 60);
+
+            const formattedHours = differenceInHours < 10 ? `0${differenceInHours}` : differenceInHours;
+            const formattedMinutes = differenceInMinutes < 10 ? `0${differenceInMinutes}` : differenceInMinutes;
+            const formattedSeconds = differenceInSeconds < 10 ? `0${differenceInSeconds}` : differenceInSeconds;
+            //setTiempo(formattedHours + ":" + formattedMinutes + ":" + formattedSeconds);
+            const transcurrido = formattedHours + ":" + formattedMinutes + ":" + formattedSeconds;
 
             var Data = {
                 accuracy: locations[0].accuracy,
@@ -161,7 +178,7 @@ export default (props) => {
     const calculateTimeDifference = (horaFinal) => {
         const startDate = new Date('2023-11-01T' + horaInicio + 'Z'); // Fecha inicial (puedes usar cualquier fecha)
         const endDate = new Date('2023-11-01T' + horaFinal + 'Z'); // Fecha actual
-        console.log(horaInicio);
+        console.log("AKISTO" + horaInicio);
         console.log(horaFinal);
         const differenceInMilliseconds = endDate - startDate;
         const differenceInSeconds = Math.floor(differenceInMilliseconds / 1000);
