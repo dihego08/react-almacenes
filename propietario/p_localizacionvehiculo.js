@@ -52,7 +52,7 @@ export default (props) => {
                 console.error('Error al obtener datos de la API:', error);
             }
         }
-
+        
         fetchLocationsFromAPI();
     }, []);
     return (

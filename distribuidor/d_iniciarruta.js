@@ -19,7 +19,7 @@ export default (props) => {
     var coordsAnterior = null;
     var auxiliar = 0;
     var laHoraInicio;
-    const id = 1;//props.navigation.state.params;
+    const id = props.navigation.state.params;
     useEffect(() => {
         (async () => {
             let { status } = await Location.requestForegroundPermissionsAsync();
