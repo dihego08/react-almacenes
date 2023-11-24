@@ -81,6 +81,13 @@ export default class Login extends Component {
 
 
 
+<View style={styles.botonmenus}>
+					<Button
+						title="Distribuidor"
+						onPress={() =>
+							navigate('MenúDistribuidor', 2)}>
+					</Button>
+				</View>
 				<Text style={styles.titulo}>INICIAR SESIÓN</Text>
 				<Image style={styles.logo} source={require('../assets/imgs/LOGOOO.png')} />
 

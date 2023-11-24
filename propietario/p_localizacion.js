@@ -43,7 +43,7 @@ export default (props) => {
                     id_vehiculo: item.id_unidad,
                     id_conductor: item.id_user
                 }));
-                //console.log(newLocations);
+                console.log(newLocations);
 
                 setLocations([...locations, ...newLocations]);
                 setData([...locations, ...newLocations]); // Establece los datos obtenidos en el estado

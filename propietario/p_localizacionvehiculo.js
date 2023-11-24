@@ -1,15 +1,24 @@
 import React, { useState, Component, useEffect } from "react";
-import { StyleSheet, View, Image, Pressable, Text, TextInput, TouchableOpacity } from "react-native";
+import { StyleSheet, View, Image, Pressable, Text, TextInput, TouchableOpacity, Dimensions } from "react-native";
 import { Table, Row, Rows } from 'react-native-table-component';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useRoute } from 'react-navigation';
+import MapView, { Marker } from "react-native-maps";
+
 
 export default (props) => {
 
     const [data, setData] = useState([]);
     const [conductor, setConductor] = useState("");
+    const [locationUpdates, setLocationUpdates] = useState([]);
+    const [laLatitude, setLatitude] = useState(null);
+    const [laLongitude, setLongitude] = useState(null);
+    var lat;
+    var lon;
     useEffect(() => {
         // Llamada a una función que obtiene datos de ubicaciones desde una API
+        setLatitude(props.navigation.state.params.item.coordinate.latitude);
+        setLongitude(props.navigation.state.params.item.coordinate.longitude);
         async function fetchLocationsFromAPI() {
 
             try {
@@ -31,16 +40,14 @@ export default (props) => {
                 })
                     .then((Response) => Response.json())
                     .then((Response) => {
-                        console.log(Response);
+
                         setData(Response); // Establece los datos obtenidos en el estado
-                        //console.log(Response.nombres);
-                        //setConductor(Response.nombres);
+
+
                     })
                     .catch((error) => {
                         console.error("ERROR FOUND" + error);
-                    })
-
-
+                    });
             } catch (error) {
                 console.error('Error al obtener datos de la API:', error);
             }
@@ -49,6 +56,7 @@ export default (props) => {
         fetchLocationsFromAPI();
     }, []);
     return (
+
         <View style={styles.viewStyle}>
 
             {/*------ENCABEZADO-----*/}
@@ -70,7 +78,27 @@ export default (props) => {
                 </View>
 
                 <View style={styles.imagemapax2}>
-                    <Image style={styles.imagemapa} source={require('../assets/imgs/mapaejemplo.jpg')} />
+                    <MapView
+                        style={[styles.map]}
+                        initialRegion={{
+                            latitude: -16.3995927, // Latitud de tu ubicación actual
+                            longitude: -71.5392708, // Longitud de tu ubicación actual
+                            latitudeDelta: 0.0922,
+                            longitudeDelta: 0.0421,
+                        }}
+                    >
+                        <Marker
+                            key="1"
+                            coordinate={{
+                                latitude: laLatitude,
+                                longitude: laLongitude,
+                            }}
+                            title={data.nombres}
+                            description={data.placa}
+                            pinColor="blue"
+                        />
+
+                    </MapView>
                 </View>
 
                 <View style={styles.contenedorelementos}>
@@ -160,7 +188,7 @@ export default (props) => {
                             placeholder="Kilometraje"
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
-                            
+
                         >
                             {data.kilometraje}
                         </Text>
@@ -174,7 +202,7 @@ export default (props) => {
                             placeholder="Tiempo"
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
-                            
+
                         >
                             {data.tiempo}
                         </Text>
@@ -252,7 +280,11 @@ const styles = StyleSheet.create({
     imagemapax2: {
         justifyContent: 'center',
         alignItems: 'center',
-        paddingBottom: 15,
+        paddingTop: 10,
+        paddingBottom: 10,
+        flex: 1,
+        width: '100%',
+        height: '100%',
     },
     contenedortitulo: {
         margin: 15,
@@ -291,6 +323,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-
+    map: {
+        height: "100%",
+        width: "100%",
+        flex: 1
+    }
 
 });
