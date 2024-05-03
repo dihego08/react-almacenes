@@ -1,8 +1,6 @@
 import React, { useState, Component } from "react";
 import { StyleSheet, View, Text, Pressable, Button, Image, TextInput, TouchableOpacity } from "react-native";
 import Feather from 'react-native-vector-icons/Feather';
-import m_propietario from "../menus/m_propietario1";
-import m_distribuidor from "../menus/m_distribuidor";
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 //tutorial: https://www.youtube.com/watch?v=2xOTp6bxxd8
 //pagina: https://www.npmjs.com/package/react-native-icons
@@ -20,7 +18,7 @@ export default class Login extends Component {
 		};
 	}
 
-	InsertRecord = () => {
+	InsertRecord = async() => {
 		var Email = this.state.email;
 		var Password = this.state.password;
 
@@ -28,17 +26,17 @@ export default class Login extends Component {
 			alert("Required Field Is Missing!!!");
 		} else {
 			console.log(Password);
-			var APIURL = "https://diegoaranibar.com/react/iniciarsesion.php";
+			var APIURL = "https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=login";
 
 
-			var headers = {
+			/*var headers = {
 				'Accept': 'application/json',
 				'Content-Type': 'application/json'
 			};
 
 			var Data = {
-				Email: Email,
-				Password: Password
+				user: Email,
+				pass: Password
 			};
 
 			fetch(APIURL, {
@@ -48,21 +46,42 @@ export default class Login extends Component {
 			})
 				.then((Response) => Response.json())
 				.then((Response) => {
-					if (Response[0].Message == "Success") {
-						console.log("true")
-						//this.props.navigation.navigate("Home");
-						//this.props.navigation.push("Detalle");
-						if (Response[0].Role == 1) {
-							this.props.navigation.push("MenúPropietarioI");//navigate('MenúPropietarioI')
-						} else {
-							this.props.navigation.push("MenúDistribuidor", Response[0].id);
-						}
+					console.log(Response);
+					if (Response.Result == "OK") {
+						console.log("ROL 2");
+						this.props.navigation.push("MenúDistribuidor", Response.Values);
+						//}
 					}
 					console.log(Data);
 				})
 				.catch((error) => {
 					console.error("ERROR FOUND" + error);
-				})
+				})*/
+
+			try {
+				const formData = new FormData();
+
+				//console.log(id);
+				formData.append('user', Email);
+				formData.append('pass', Password);
+				const response = await fetch(APIURL, {
+					method: 'POST',
+					body: formData,
+					headers: {
+						'Content-Type': 'multipart/form-data',
+					},
+				});
+
+				const result = await response.json();
+				console.log('Response from server:', result);
+				if (result.Result == "OK") {
+					console.log("ROL 2");
+					this.props.navigation.push("MenúDistribuidor", result.Values);
+					//}
+				}
+			} catch (error) {
+				console.error('Error uploading photo:', error);
+			}
 		}
 	}
 
@@ -78,21 +97,9 @@ export default class Login extends Component {
 		/*------------------------*/
 		return (
 			<View style={styles.viewStyle}>
-
-
-
-				<View style={styles.botonmenus}>
-					<Button
-						title="Distribuidor"
-						onPress={() =>
-							navigate('MenúDistribuidor', 2)}>
-					</Button>
-				</View>
 				<Text style={styles.titulo}>INICIAR SESIÓN</Text>
 				<Image style={styles.logo} source={require('../assets/imgs/LOGOOO.png')} />
-
 				<View style={styles.container}>
-
 					<View style={styles.action}>
 
 						<View style={styles.iconocirculo}>
@@ -136,8 +143,6 @@ export default class Login extends Component {
 							}
 						</TouchableOpacity>
 					</View>
-
-
 					{/* Button */}
 
 					<View style={styles.loginButtonSection}>
@@ -152,25 +157,6 @@ export default class Login extends Component {
 					</View>
 
 				</View>
-
-				{/*----BOTON MENU-PARTE2---*/}
-				<View style={styles.botonmenus}>
-					<Button
-						title="Propietario"
-						onPress={() =>
-							navigate('MenúPropietarioI')}>
-					</Button>
-				</View>
-
-				<View style={styles.botonmenus}>
-					<Button
-						title="Distribuidor"
-						onPress={() =>
-							navigate('MenúDistribuidor')}>
-					</Button>
-				</View>
-				{/*------------------------*/}
-
 			</View>
 		);
 	}

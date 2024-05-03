@@ -3,7 +3,7 @@
     "name": "Puntos",
     "slug": "Puntos",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "lanscape",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {

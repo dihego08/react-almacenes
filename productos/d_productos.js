@@ -4,8 +4,6 @@ import React, { useState, Component, useEffect } from "react";
 import { StyleSheet, View, Image, Pressable, Text, FlatList, ScrollView, TextInput, TouchableOpacity, Dimensions } from "react-native";
 import { Table, Row, Rows } from 'react-native-table-component';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import * as Location from 'expo-location';
-import MapView, { Marker } from "react-native-maps";
 import * as FileSystem from 'expo-file-system';
 
 
@@ -32,22 +30,6 @@ export default (props) => {
                     foto: item.foto
                 }));
 
-
-
-                /*let i = 0;
-                inventarios.forEach(element => {
-                    console.log(element);
-                    console.log(inventarios[0]);
-                    if (checkFileExists(element.foto) == 1) {
-                        //inventarios[i].foto = require(FileSystem.documentDirectory + element.foto);
-                        console.log("UNO");
-                    } else {
-                        console.log("DOS");
-                        downloadImage(element.foto);
-                    }
-                    //inventarios[i].foto = require(FileSystem.documentDirectory + element.foto);
-                    i += 1;
-                });*/
                 for (const inventario of inventarios) {
                     const fotoExists = await checkFileExists(inventario.foto);
                     if (fotoExists) {

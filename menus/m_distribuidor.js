@@ -32,7 +32,6 @@ export default class m_propietario extends Component {
                 </View> 
                 {/*---------------------*/}  
                        
-                
                 <View style={styles.container}>
 
                     <View style={styles.imagelogox2}>
@@ -41,40 +40,7 @@ export default class m_propietario extends Component {
 
                     <View style={styles.menu}>
                         <Pressable
-                            onPress={() => navigate('IniciarRuta', id)}
-                            style={({ pressed }) => {
-                                return { opacity: pressed ? 0 : 1 }
-                            }}>
-                            <Image style={styles.imageboton} source={require('../assets/imgs/menu_iniciar_ruta.png')} />
-                        </Pressable>
-                        <Pressable
-                            onPress={() => navigate('ClientesDistribuidor')}
-                            style={({ pressed }) => {
-                                return { opacity: pressed ? 0 : 1 }
-                            }}>
-                            <Image style={styles.imageboton} source={require('../assets/imgs/menu_clientes.png')} />
-                        </Pressable>
-
-                    </View>
-                    <View style={styles.menu}>
-                        <Pressable
                             onPress={() => navigate('ProductosDistribuidor')}
-                            style={({ pressed }) => {
-                                return { opacity: pressed ? 0 : 1 }
-                            }}>
-                            <Image style={styles.imageboton} source={require('../assets/imgs/menu_productos.png')} />
-                        </Pressable>
-                        <Pressable
-                            onPress={() => navigate('PedidosDistribuidor')}
-                            style={({ pressed }) => {
-                                return { opacity: pressed ? 0 : 1 }
-                            }}>
-                            <Image style={styles.imageboton} source={require('../assets/imgs/menu_pedidos.png')} />
-                        </Pressable>
-                    </View>
-                    <View style={styles.menu}>
-                        <Pressable
-                            onPress={() => navigate('CatálogoDistribuidor')}
                             style={({ pressed }) => {
                                 return { opacity: pressed ? 0 : 1 }
                             }}>

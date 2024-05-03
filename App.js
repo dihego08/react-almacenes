@@ -5,7 +5,6 @@ import HomeScreen from './screens/Home'
 import m_propietario1Screen from './menus/m_propietario1'
 import m_propietario2Screen from './menus/m_propietario2'
 import m_distribuidorScreen from './menus/m_distribuidor'
-import d_iniciarrutaScreen from './distribuidor/d_iniciarruta'
 import d_clientesScreen from './distribuidor/d_clientes'
 import d_nuevoclienteScreen from './distribuidor/d_nuevocliente'
 import d_infoclienteScreen from './distribuidor/d_infocliente'
@@ -16,8 +15,6 @@ import d_nuevopedidoScreen from './distribuidor/d_nuevopedido'
 import d_infopedidoScreen from './distribuidor/d_infopedido'
 import d_entregaScreen from './distribuidor/d_entrega'
 import d_catalogoScreen from './distribuidor/d_catalogo'
-import p_localizacionScreen from './propietario/p_localizacion'
-import p_localizacionvehiculoScreen from './propietario/p_localizacionvehiculo'
 import p_nuevoconductorScreen from './propietario/p_nuevoconductor'
 import p_nuevovehiculoScreen from './propietario/p_nuevovehiculo'
 import p_nuevarutaScreen from './propietario/p_nuevaruta'
@@ -26,9 +23,8 @@ import p_nuevousuarioScreen from './propietario/p_nuevousuario'
 import p_catalogoScreen from './propietario/p_catalogo'
 import p_reporteScreen from './propietario/p_reporte'
 import p_clientesScreen from './propietario/p_clientes'
-
 import crudproductosScreen from './frontendprop/crudproductos'
-import LocationScreen from './screens/Location'
+import Home from './screens/Home';
 
 const AppNavigator = createStackNavigator({
 	Home: {
@@ -45,9 +41,6 @@ const AppNavigator = createStackNavigator({
 	},
 	MenúDistribuidor: {
 		screen: m_distribuidorScreen
-	},
-	IniciarRuta: {
-		screen: d_iniciarrutaScreen
 	},
 	ClientesDistribuidor: {
 		screen: d_clientesScreen
@@ -83,12 +76,6 @@ const AppNavigator = createStackNavigator({
 	CatálogoDistribuidor: {
 		screen: d_catalogoScreen
 	},
-	Localización: {
-		screen: p_localizacionScreen
-	},
-	LocalizaciónVehículo: {
-		screen: p_localizacionvehiculoScreen
-	},
 	NuevoConductor: {
 		screen: p_nuevoconductorScreen
 	},
@@ -113,17 +100,11 @@ const AppNavigator = createStackNavigator({
 	ClientesPropietario: {
 		screen: p_clientesScreen
 	},
-
-
-
 	crud: {
 		screen: crudproductosScreen
-	},
-	Location: {
-		screen: LocationScreen
 	}
 }, {
-	initialRouteName: 'ProductosDistribuidor'
+	initialRouteName: 'Home'
 });
 export default createAppContainer(AppNavigator);
 

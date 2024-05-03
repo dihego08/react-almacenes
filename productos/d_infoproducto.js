@@ -5,8 +5,6 @@ import { StyleSheet, View, Image, Pressable, Text, ScrollView, TextInput, Button
 import { Picker } from '@react-native-picker/picker';
 import { Table, Row, Rows } from 'react-native-table-component';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import * as Location from 'expo-location';
-import MapView, { Marker } from "react-native-maps";
 import { Camera } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
 
@@ -36,6 +34,7 @@ export default (props) => {
     const [detalles, setDetalles] = useState(null);
     const [observaciones, setObservaciones] = useState(null);
     const [otros, setOtros] = useState(null);
+    const [id, setId] = useState(null);
 
     const [hasPermission, setHasPermission] = useState(null);
     const [photoUri, setPhotoUri] = useState(null);
@@ -85,7 +84,7 @@ export default (props) => {
             try {
                 const formData = new FormData();
                 formData.append('id', props.navigation.state.params.id);
-
+                console.log("ID => ", props.navigation.state.params.id);
                 const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=editar_inventario', {
                     method: 'POST',
                     body: formData,
@@ -96,12 +95,11 @@ export default (props) => {
 
                 const result = await response.json();
 
-                console.log(FileSystem.documentDirectory);
-
                 setSelectedOption(result.id_sede);
                 setSelectedEstado(result.id_estado);
                 setSelectedClasificacion(result.id_clasificacion);
-
+                console.log('result.id => ', result.id);
+                setId(result.id);
                 setCuenta(result.cuenta);
                 setCodigoAF(result.codigo_af);
                 setSAPPadre(result.sap_padre);
@@ -121,7 +119,10 @@ export default (props) => {
                 console.error('Error al obtener opciones desde la API:', error);
             }
         }
-        getData();
+        if (props) {
+            getData();
+        }
+
     }, []);
 
     const handleOptionChange = (value) => {
@@ -147,37 +148,46 @@ export default (props) => {
             }
         }
     };
-    
+
     const uploadPhotoToServer = async () => {
         try {
-            console.log("SI ENTRO AKI");
             const formData = new FormData();
-            formData.append('photo', {
-                uri: photoUri,
-                name: 'photo.jpg',
-                type: 'image/jpeg',
-            });
+            if (photoUri) {
+                formData.append('photo', {
+                    uri: photoUri,
+                    name: 'photo.jpg',
+                    type: 'image/jpeg',
+                });
+            }
 
-            formData.append('cuenta', cuenta.cuenta);
-            formData.append('codigo_af', codigo_af.codigo_af);
-            formData.append('sap_padre', sap_padre.sap_padre);
-            formData.append('sap_componente', sap_componente.sap_componente);
-            formData.append('codigo_fisico', codigo_fisico.codigo_fisico);
-            formData.append('descripcion', descripcion.descripcion);
-            formData.append('marca', marca.marca);
-            formData.append('modelo', modelo.modelo);
-            formData.append('serie', serie.serie);
-            formData.append('medida', medida.medida);
-            formData.append('color', color.color);
-            formData.append('detalles', detalles.detalles);
-            formData.append('observaciones', observaciones.observaciones);
-            formData.append('otros', otros.otros);
+            console.log(id);
+            formData.append('id', id ? id : '');
+            formData.append('cuenta', cuenta ? cuenta : '');
+            formData.append('codigo_af', codigo_af ? codigo_af : '');
+            formData.append('sap_padre', sap_padre ? sap_padre : '');
+            formData.append('sap_componente', sap_componente ? sap_componente : '');
+            formData.append('codigo_fisico', codigo_fisico ? codigo_fisico : '');
+            formData.append('descripcion', descripcion ? descripcion : '');
+            formData.append('marca', marca ? marca : '');
+            formData.append('modelo', modelo ? modelo : '');
+            formData.append('serie', serie ? serie : '');
+            formData.append('medida', medida ? medida : '');
+            formData.append('color', color ? color : '');
+            formData.append('detalles', detalles ? detalles : '');
+            formData.append('observaciones', observaciones ? observaciones : '');
+            formData.append('otros', otros ? otros : '');
 
             formData.append('id_sede', selectedOption);
             formData.append('id_estado', selectedEstado);
             formData.append('id_clasificacion', selectedClasificacion);
-
-            const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=actualizar_inventario', {
+            let url = '';
+            if (id) {
+                url = 'https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=actualizar_inventario';
+            } else {
+                url = 'https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=insertar_inventario';
+            }
+            console.log(url);
+            const response = await fetch(url, {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -196,43 +206,48 @@ export default (props) => {
 
         <View style={styles.viewStyle}>
 
-            {/*------ENCABEZADO-----*/}
             <View style={styles.encabezado}>
                 <View>
-                    <Text style={styles.textotitulo1}>Detalle Elemento</Text>
-                    <Text style={styles.textosubtitulo}>¡Ofrecemos calidad!</Text>
+                    <Text style={styles.textotitulo1}>Detalle Producto</Text>
                 </View>
                 <View>
                     <Image style={styles.imglogo} source={require('../assets/imgs/LOGO1.png')} />
                 </View>
             </View>
-            {/*---------------------*/}
 
             <View style={styles.container}>
-                <ScrollView style={styles.scrollView}>
-                    <View style={styles.action}>
-                        <Camera
-                            ref={(ref) => {
-                                setCameraRef(ref);
-                            }}
-                            style={styles.camera}
-                            ratio="4:3"
-                        />
-
-                        <View style={styles.iconocirculo}>
-                            <MaterialIcons name='photo' style={styles.iconos} onPress={takePicture} />
-                        </View>
-
-                        {photoUri && <Image source={{ uri: photoUri }} style={{ width: 200, height: 200 }} />}
-
+                <View style={styles.action}>
+                    <Camera
+                        ref={(ref) => {
+                            setCameraRef(ref);
+                        }}
+                        style={styles.camera}
+                        ratio="4:3"
+                    />
+                    <View style={styles.iconocirculo}>
+                        <MaterialIcons name='photo' style={styles.iconos} onPress={takePicture} />
                     </View>
+
+                    {/* Button */}
+
+                    <View style={styles.iconocirculo}>
+                        <Pressable
+                            onPress={uploadPhotoToServer}
+                        >
+                            <MaterialIcons name='check' style={styles.iconos} />
+                        </Pressable>
+                    </View>
+
+                    {photoUri && <Image source={{ uri: photoUri }} style={{ width: 200, height: 200 }} />}
+                </View>
+                <ScrollView style={styles.scrollView}>
                     <View style={styles.action}>
                         <TextInput
                             placeholder="Cuenta"
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
                             value={cuenta ? cuenta : ''}
-                            onChangeText={cuenta => setCuenta({ cuenta })}
+                            onChangeText={text => setCuenta({ text })}
                         />
                     </View>
 
@@ -254,7 +269,7 @@ export default (props) => {
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
                             value={codigo_af ? codigo_af : ''}
-                            onChangeText={codigo_af => setCodigoAF({ codigo_af })}
+                            onChangeText={text => setCodigoAF({ text })}
                         />
                     </View>
 
@@ -264,7 +279,7 @@ export default (props) => {
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
                             value={sap_padre ? sap_padre : ''}
-                            onChangeText={sap_padre => setSAPPadre({ sap_padre })}
+                            onChangeText={text => setSAPPadre({ text })}
                         />
                     </View>
 
@@ -274,7 +289,7 @@ export default (props) => {
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
                             value={sap_componente ? sap_componente : ''}
-                            onChangeText={sap_componente => setSAPComponente({ sap_componente })}
+                            onChangeText={text => setSAPComponente({ text })}
                         />
                     </View>
 
@@ -284,7 +299,7 @@ export default (props) => {
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
                             value={codigo_fisico ? codigo_fisico : ''}
-                            onChangeText={codigo_fisico => setCodigoFisico({ codigo_fisico })}
+                            onChangeText={text => setCodigoFisico({ text })}
                         />
                     </View>
 
@@ -294,7 +309,7 @@ export default (props) => {
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
                             value={descripcion ? descripcion : ''}
-                            onChangeText={descripcion => setDescripcion({ descripcion })}
+                            onChangeText={text => setDescripcion({ text })}
                         />
                     </View>
 
@@ -304,7 +319,7 @@ export default (props) => {
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
                             value={marca ? marca : ''}
-                            onChangeText={marca => setMarca({ marca })}
+                            onChangeText={text => setMarca({ text })}
                         />
                     </View>
 
@@ -314,7 +329,7 @@ export default (props) => {
                             placeholderTextColor="#B2BABB"
                             value={modelo ? modelo : ''}
                             style={styles.textInput}
-                            onChangeText={modelo => setModelo({ modelo })}
+                            onChangeText={text => setModelo({ text })}
                         />
                     </View>
 
@@ -324,7 +339,7 @@ export default (props) => {
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
                             value={serie ? serie : ''}
-                            onChangeText={serie => setSerie({ serie })}
+                            onChangeText={text => setSerie({ text })}
                         />
                     </View>
 
@@ -334,7 +349,7 @@ export default (props) => {
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
                             value={medida ? medida : ''}
-                            onChangeText={medida => setMedida({ medida })}
+                            onChangeText={text => setMedida({ text })}
                         />
                     </View>
 
@@ -344,7 +359,7 @@ export default (props) => {
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
                             value={color ? color : ''}
-                            onChangeText={color => setColor({ color })}
+                            onChangeText={text => setColor({ text })}
                         />
                     </View>
 
@@ -354,7 +369,7 @@ export default (props) => {
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
                             value={detalles ? detalles : ''}
-                            onChangeText={detalles => setDetalles({ detalles })}
+                            onChangeText={text => setDetalles({ text })}
                         />
                     </View>
 
@@ -364,7 +379,7 @@ export default (props) => {
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
                             value={observaciones ? observaciones : ''}
-                            onChangeText={observaciones => setObservaciones({ observaciones })}
+                            onChangeText={text => setObservaciones({ text })}
                         />
                     </View>
 
@@ -374,7 +389,7 @@ export default (props) => {
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
                             value={otros ? otros : ''}
-                            onChangeText={otros => setOtros({ otros })}
+                            onChangeText={text => setOtros({ text })}
                         />
                     </View>
 
@@ -400,18 +415,6 @@ export default (props) => {
                                 <Picker.Item key={option.id} label={option.estado} value={option.id} />
                             ))}
                         </Picker>
-                    </View>
-
-
-                    {/* Button */}
-
-                    <View style={styles.loginButtonSection}>
-                        <Pressable
-                            style={styles.loginButton}
-                            onPress={uploadPhotoToServer}
-                        >
-                            <Text style={styles.textbtn}>Guardar</Text>
-                        </Pressable>
                     </View>
                 </ScrollView>
             </View>
@@ -459,7 +462,7 @@ const styles = StyleSheet.create({
     imglogo: {
         width: 90,
         height: 90,
-        marginLeft: 80,
+        marginLeft: 70,
     },
     /*----------------------------*/
 
@@ -487,8 +490,8 @@ const styles = StyleSheet.create({
         elevation: 6,
     },
     iconocirculo: {
-        height: 65,
-        width: 65,
+        height: 45,
+        width: 45,
         backgroundColor: '#f1f1f1',
         alignSelf: 'center',
         borderRadius: 40,
@@ -498,7 +501,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     iconos: {
-        fontSize: 45,
+        fontSize: 25,
         paddingLeft: 10,
         paddingTop: 9,
         color: '#0000CC',
