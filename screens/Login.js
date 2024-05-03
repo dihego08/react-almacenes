@@ -81,7 +81,7 @@ export default class Login extends Component {
 
 
 
-<View style={styles.botonmenus}>
+				<View style={styles.botonmenus}>
 					<Button
 						title="Distribuidor"
 						onPress={() =>

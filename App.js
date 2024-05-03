@@ -9,8 +9,8 @@ import d_iniciarrutaScreen from './distribuidor/d_iniciarruta'
 import d_clientesScreen from './distribuidor/d_clientes'
 import d_nuevoclienteScreen from './distribuidor/d_nuevocliente'
 import d_infoclienteScreen from './distribuidor/d_infocliente'
-import d_productosScreen from './distribuidor/d_productos'
-import d_infoproductoScreen from './distribuidor/d_infoproducto'
+import d_productosScreen from './productos/d_productos'
+import d_infoproductoScreen from './productos/d_infoproducto'
 import d_pedidosScreen from './distribuidor/d_pedidos'
 import d_nuevopedidoScreen from './distribuidor/d_nuevopedido'
 import d_infopedidoScreen from './distribuidor/d_infopedido'
@@ -62,6 +62,10 @@ const AppNavigator = createStackNavigator({
 		screen: d_productosScreen
 	},	
 	InformaciónDeProducto: {
+		screen: d_infoproductoScreen
+	},
+	InformacionProducto:
+	{
 		screen: d_infoproductoScreen
 	},
 	PedidosDistribuidor: {
@@ -119,7 +123,7 @@ const AppNavigator = createStackNavigator({
 		screen: LocationScreen
 	}
 }, {
-	initialRouteName: 'Home'
+	initialRouteName: 'ProductosDistribuidor'
 });
 export default createAppContainer(AppNavigator);
 

@@ -6,19 +6,34 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 export default class m_propietario extends Component {
 
     constructor(props) {
-
         super(props);
-
-
-
+        this.state = {
+            searchText: '',
+            productos: [
+                { nombre: 'AJINOMEN', tipo: 'Vino' },
+                { nombre: 'Nombre de Producto', tipo: 'Vino' },
+                { nombre: 'Nombre de Producto', tipo: 'Vino' },
+                { nombre: 'Nombre de Producto', tipo: 'Vino' },
+                { nombre: 'Nombre de Producto', tipo: 'Vino' },
+            ]
+        };
     }
+
+    filtrarProductos = (text) => {
+        this.setState({ searchText: text });
+    }
+
     render() {
-        /*----BOTON PARTE1---*/
         const { navigate } = this.props.navigation;
+        const { productos, searchText } = this.state;
+
+        // Filtrar productos basados en el texto de búsqueda
+        const productosFiltrados = productos.filter(producto =>
+            producto.nombre.toLowerCase().includes(searchText.toLowerCase())
+        );
+
         return (
             <View style={styles.viewStyle}>
-
-                {/*------ENCABEZADO-----*/}
                 <View style={styles.encabezado}>
                     <View>
                         <Text style={styles.textotitulo1}>Productos</Text>
@@ -28,11 +43,8 @@ export default class m_propietario extends Component {
                         <Image style={styles.imglogo} source={require('../assets/imgs/LOGO1.png')} />
                     </View>
                 </View>
-                {/*---------------------*/}
 
                 <View style={styles.container}>
-
-                    {/*--------BUSCAR-------------*/}
                     <View style={styles.action}>
                         <View style={styles.iconocirculobusca}>
                             <MaterialIcons name='search' style={styles.iconosbusca} />
@@ -41,82 +53,31 @@ export default class m_propietario extends Component {
                             placeholder="Digite para filtrar"
                             placeholderTextColor="#B2BABB"
                             style={styles.textInput}
-                            onChangeText={email => this.setState({ email })}
+                            onChangeText={this.filtrarProductos}
                         />
                     </View>
-                    {/*--------------------------*/}
 
-                    <Pressable
-                        onPress={() => navigate('InformaciónDeProducto')}
-                        style={({ pressed }) => {
-                            return { opacity: pressed ? 0 : 1 }
-                        }}>
-                        <View style={styles.containerinfo}>
-                            <View style={styles.iconocirculo}>
-                                <MaterialIcons name='wine-bar' style={styles.iconos} />
+                    {productosFiltrados.map((producto, index) => (
+                        <Pressable
+                            key={index}
+                            onPress={() => navigate('InformaciónDeProducto')}
+                            style={({ pressed }) => {
+                                return { opacity: pressed ? 0 : 1 }
+                            }}>
+                            <View style={styles.containerinfo}>
+                                <View style={styles.iconocirculo}>
+                                    <MaterialIcons name='wine-bar' style={styles.iconos} />
+                                </View>
+                                <View style={styles.textoinfo}>
+                                    <Text style={styles.texto1}>{producto.nombre}</Text>
+                                    <Text><Text style={styles.texto1}>Tipo:</Text> <Text style={styles.texto2}>{producto.tipo}</Text></Text>
+                                </View>
                             </View>
-                            <View style={styles.textoinfo}>
-                                <Text style={styles.texto1}>Nombre de Producto</Text>
-                                <Text><Text style={styles.texto1}>Tipo:</Text> <Text style={styles.texto2}>Vino</Text></Text>
-                            </View>
-                        </View>
-                    </Pressable>
-
-                    <View style={styles.containerinfo}>
-                        <View style={styles.iconocirculo}>
-                            <MaterialIcons name='wine-bar' style={styles.iconos} />
-                        </View>
-                        <View style={styles.textoinfo}>
-                            <Text style={styles.texto1}>Nombre de Producto</Text>
-                            <Text><Text style={styles.texto1}>Tipo:</Text> <Text style={styles.texto2}>Vino</Text></Text>
-                        </View>
-                    </View>
-                    <View style={styles.containerinfo}>
-                        <View style={styles.iconocirculo}>
-                            <MaterialIcons name='wine-bar' style={styles.iconos} />
-                        </View>
-                        <View style={styles.textoinfo}>
-                            <Text style={styles.texto1}>Nombre de Producto</Text>
-                            <Text><Text style={styles.texto1}>Tipo:</Text> <Text style={styles.texto2}>Vino</Text></Text>
-                        </View>
-                    </View>
-                    <View style={styles.containerinfo}>
-                        <View style={styles.iconocirculo}>
-                            <MaterialIcons name='wine-bar' style={styles.iconos} />
-                        </View>
-                        <View style={styles.textoinfo}>
-                            <Text style={styles.texto1}>Nombre de Producto</Text>
-                            <Text><Text style={styles.texto1}>Tipo:</Text> <Text style={styles.texto2}>Vino</Text></Text>
-                        </View>
-                    </View>
-                    <View style={styles.containerinfo}>
-                        <View style={styles.iconocirculo}>
-                            <MaterialIcons name='wine-bar' style={styles.iconos} />
-                        </View>
-                        <View style={styles.textoinfo}>
-                            <Text style={styles.texto1}>Nombre de Producto</Text>
-                            <Text><Text style={styles.texto1}>Tipo:</Text> <Text style={styles.texto2}>Vino</Text></Text>
-                        </View>
-                    </View>
-
-                    {/*--------FLOTANTE NUEVO CLIENTE-------------
-                    <Pressable
-                        onPress={() => navigate('NuevoProducto')}
-                        style={({ pressed }) => {
-                            return { opacity: pressed ? 0 : 1 }
-                        }}>
-                        <View style={styles.iconocirculoflotante}>
-                            <MaterialIcons name='add' style={styles.iconosflotante} />
-                        </View>
-                    </Pressable>
-                    -------------------------------------------*/}
-
+                        </Pressable>
+                    ))}
 
                 </View>
-
             </View>
-
-
         );
     }
 }
