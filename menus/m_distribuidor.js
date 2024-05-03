@@ -13,8 +13,10 @@ export default class m_propietario extends Component {
 
         /*----BOTON MENU-PARTE1---*/
 		const { navigate } = this.props.navigation;
-        const id = this.props.navigation.state.params;
-        console.log("EL PARAMETRO " + this.props.navigation.state.params);
+        const id = this.props.navigation.state.params.id;
+        const nombres = this.props.navigation.state.params.nombres;
+        const sede = this.props.navigation.state.params.sede;
+        console.log("EL PARAMETRO " + this.props.navigation.state.params.nombres);
 
 		return (
             <View style={styles.viewStyle}>
@@ -22,9 +24,9 @@ export default class m_propietario extends Component {
                 {/*------ENCABEZADO-----*/}
                 <View style={styles.encabezado}>
                     <View>                        
-                        <Text style={styles.textotitulo1}>Hola, Yaraliz</Text>
+                        <Text style={styles.textotitulo1}>Hola, {nombres}</Text>
                         <Text style={styles.texto2}>¡Bienvenid(a)! </Text>
-                        <Text style={styles.cuenta}><Text style={styles.texto1}>Cuenta:</Text> <Text style={styles.texto2}>Distribuidor</Text></Text>  
+                        <Text style={styles.cuenta}><Text style={styles.texto1}>Sede:</Text> <Text style={styles.texto2}>{sede}</Text></Text>  
                     </View> 
                     <View> 
                         <Image style={styles.imgusuario} source={require('../assets/imgs/usuario_f.png')} />
