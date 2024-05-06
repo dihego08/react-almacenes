@@ -2,6 +2,8 @@ import React, { useState, Component } from "react";
 import { StyleSheet, View, Text, Pressable, Button, Image, TextInput, TouchableOpacity } from "react-native";
 import Feather from 'react-native-vector-icons/Feather';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 //tutorial: https://www.youtube.com/watch?v=2xOTp6bxxd8
 //pagina: https://www.npmjs.com/package/react-native-icons
 //comando: npm i react-native-icons
@@ -17,7 +19,21 @@ export default class Login extends Component {
 			secureTextEntry: true,
 		};
 	}
-
+	componentDidMount() {
+		this.checkIfUserLoggedIn();
+	}
+	checkIfUserLoggedIn = async () => {
+		try {
+			const userLoggedIn = await AsyncStorage.getItem('usuarioLogin');
+			if (userLoggedIn) {
+				// Si hay un usuario logueado, navega a la siguiente pantalla
+				this.props.navigation.replace("MenúDistribuidor");
+				this.props.navigation.navigate("MenúDistribuidor");
+			}
+		} catch (error) {
+			console.error('Error al obtener usuario logueado:', error);
+		}
+	};
 	InsertRecord = async() => {
 		var Email = this.state.email;
 		var Password = this.state.password;
@@ -28,40 +44,9 @@ export default class Login extends Component {
 			console.log(Password);
 			var APIURL = "https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=login";
 
-
-			/*var headers = {
-				'Accept': 'application/json',
-				'Content-Type': 'application/json'
-			};
-
-			var Data = {
-				user: Email,
-				pass: Password
-			};
-
-			fetch(APIURL, {
-				method: 'POST',
-				headers: headers,
-				body: JSON.stringify(Data)
-			})
-				.then((Response) => Response.json())
-				.then((Response) => {
-					console.log(Response);
-					if (Response.Result == "OK") {
-						console.log("ROL 2");
-						this.props.navigation.push("MenúDistribuidor", Response.Values);
-						//}
-					}
-					console.log(Data);
-				})
-				.catch((error) => {
-					console.error("ERROR FOUND" + error);
-				})*/
-
 			try {
 				const formData = new FormData();
 
-				//console.log(id);
 				formData.append('user', Email);
 				formData.append('pass', Password);
 				const response = await fetch(APIURL, {
@@ -76,6 +61,7 @@ export default class Login extends Component {
 				console.log('Response from server:', result);
 				if (result.Result == "OK") {
 					console.log("ROL 2");
+					await AsyncStorage.setItem('usuarioLogin', JSON.stringify(result.Values));
 					this.props.navigation.push("MenúDistribuidor", result.Values);
 					//}
 				}
@@ -97,8 +83,7 @@ export default class Login extends Component {
 		/*------------------------*/
 		return (
 			<View style={styles.viewStyle}>
-				<Text style={styles.titulo}>INICIAR SESIÓN</Text>
-				<Image style={styles.logo} source={require('../assets/imgs/LOGOOO.png')} />
+				<Image style={styles.logo} source={require('../assets/imgs/logoeg.png')} />
 				<View style={styles.container}>
 					<View style={styles.action}>
 
@@ -165,7 +150,7 @@ const styles = StyleSheet.create({
 	viewStyle: {
 		flex: 1,
 		padding: 20,
-		paddingTop: 80,
+		paddingTop: 20,
 		alignItems: 'center',
 		backgroundColor: '#f1f1f1',
 	},

@@ -1,43 +1,51 @@
-import React, { useState, Component } from "react";
-import { StyleSheet, View, Image, Pressable, Text} from "react-native";
-import { Table, Row, Rows } from 'react-native-table-component';
+import React, { Component } from "react";
+import { StyleSheet, View, Image, Pressable, Text } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default class m_propietario extends Component {
-    
-	constructor(props) {
-        
+
+    constructor(props) {
+
         super(props);
-       
-      }
-	render() {
+        this.state = {
+            nombres: '',
+            sede: ''
+        };
+
+    }
+    componentDidMount() {
+        AsyncStorage.getItem('usuarioLogin').then((storedData) => {
+            const dataLogin = JSON.parse(storedData);
+            this.setState({
+                nombres: dataLogin.nombres,
+                sede: dataLogin.sede
+            });
+        }).catch((error) => {
+            console.error('Error al obtener datos del usuario:', error);
+        });
+    }
+    render() {
 
         /*----BOTON MENU-PARTE1---*/
-		const { navigate } = this.props.navigation;
-        const id = this.props.navigation.state.params.id;
-        const nombres = this.props.navigation.state.params.nombres;
-        const sede = this.props.navigation.state.params.sede;
-        console.log("EL PARAMETRO " + this.props.navigation.state.params.nombres);
-
-		return (
+        const { nombres, sede } = this.state;
+        const { navigate } = this.props.navigation;
+        return (
             <View style={styles.viewStyle}>
-            
+
                 {/*------ENCABEZADO-----*/}
                 <View style={styles.encabezado}>
-                    <View>                        
+                    <View>
                         <Text style={styles.textotitulo1}>Hola, {nombres}</Text>
                         <Text style={styles.texto2}>¡Bienvenid(a)! </Text>
-                        <Text style={styles.cuenta}><Text style={styles.texto1}>Sede:</Text> <Text style={styles.texto2}>{sede}</Text></Text>  
-                    </View> 
-                    <View> 
-                        <Image style={styles.imgusuario} source={require('../assets/imgs/usuario_f.png')} />
+                        <Text style={styles.cuenta}><Text style={styles.texto1}>Sede:</Text> <Text style={styles.texto2}>{sede}</Text></Text>
                     </View>
-                </View> 
-                {/*---------------------*/}  
-                       
+                </View>
+                {/*---------------------*/}
+
                 <View style={styles.container}>
 
                     <View style={styles.imagelogox2}>
-                        <Image style={styles.imagelogo} source={require('../assets/imgs/LOGO1.png')} />
+                        <Image style={styles.imagelogo} source={require('../assets/imgs/logoeg.png')} />
                     </View>
 
                     <View style={styles.menu}>
@@ -50,17 +58,17 @@ export default class m_propietario extends Component {
                         </Pressable>
                     </View>
                 </View>
-            </View> 
-		);
-	}
+            </View>
+        );
+    }
 }
 const styles = StyleSheet.create({
-	viewStyle: {
-		flex: 1,
-        backgroundColor: '#f1f1f1',	
-	},
-     /*----ESTILOS ENCABEZADO----*/
-     encabezado: {
+    viewStyle: {
+        flex: 1,
+        backgroundColor: '#f1f1f1',
+    },
+    /*----ESTILOS ENCABEZADO----*/
+    encabezado: {
         padding: 16,
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -83,32 +91,32 @@ const styles = StyleSheet.create({
         fontSize: 15,
         paddingLeft: 10,
     },
-    cuenta:{
+    cuenta: {
         paddingLeft: 10,
     },
-    imgusuario:{
+    imgusuario: {
         width: 80,
         height: 80,
         marginLeft: 100,
-   },
+    },
     /*----------------------------*/
 
-    container: { 
+    container: {
         flex: 1,
         padding: 20,
         paddingTop: 30,
         backgroundColor: '#fff',
         borderTopRightRadius: 70,
         borderTopLeftRadius: 70,
-        elevation: 30, 
+        elevation: 30,
     },
-    menu:{
+    menu: {
         padding: 10,
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'center',
         alignItems: 'center',
-    },   
+    },
     imageboton: {
         width: 130,
         height: 130,
@@ -122,8 +130,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    
-    
-  
-   
+
+
+
+
 });
