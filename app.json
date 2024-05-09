@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Puntos",
+    "name": "Almacen",
     "slug": "Puntos",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "orientation": "default",
+    "icon": "./assets/imgs/logoeg.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
@@ -34,9 +34,15 @@
     },
     "plugins": [
       [
-        "expo-location",
+        "expo-screen-orientation",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
+          "initialOrientation": "DEFAULT"
+        }
+      ],
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "DEFAULT"
         }
       ]
     ],

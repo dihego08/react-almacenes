@@ -22,24 +22,27 @@ export default (props) => {
 
     const [cuenta, setCuenta] = useState(null);
     const [codigo_af, setCodigoAF] = useState(null);
-    const [sap_padre, setSAPPadre] = useState(null);
-    const [sap_componente, setSAPComponente] = useState(null);
     const [codigo_fisico, setCodigoFisico] = useState(null);
     const [descripcion, setDescripcion] = useState(null);
     const [marca, setMarca] = useState(null);
     const [modelo, setModelo] = useState(null);
     const [serie, setSerie] = useState(null);
     const [medida, setMedida] = useState(null);
+
+    const [unidad, setUnidad] = useState(null);
+    const [cantidad, setCantidad] = useState(null);
     const [color, setColor] = useState(null);
     const [detalles, setDetalles] = useState(null);
     const [observaciones, setObservaciones] = useState(null);
-    const [otros, setOtros] = useState(null);
     const [cod_inventario, setCodInventario] = useState(null);
     const [id, setId] = useState(null);
+    const [foto, setFoto] = useState(null);
     const [connectionState, setConnectionState] = useState(null);
 
     const [photoUri, setPhotoUri] = useState(null);
     const [cameraRef, setCameraRef] = useState(null);
+
+    const [show, setShow] = useState(false);
 
     useEffect(() => {
         // Función para cargar las opciones desde la API
@@ -48,13 +51,16 @@ export default (props) => {
                 // Realizar la solicitud HTTP para obtener las opciones desde la API
                 const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_sedes');
                 const data = await response.json();
+                data.unshift({ id: 0, sede: "TODAS" });
                 setOptions(data);
                 await AsyncStorage.setItem('sedes', JSON.stringify(data));
             } catch (error) {
                 console.error('Error al obtener opciones desde la API:', error);
                 const storedOptions = await AsyncStorage.getItem('sedes');
                 if (storedOptions) {
-                    setOptions(JSON.parse(storedOptions));
+                    const parsedOptions = JSON.parse(storedOptions);
+                    parsedOptions.unshift({ id: 0, sede: "TODAS" });
+                    setOptions(parsedOptions);
                 }
             }
         };
@@ -63,13 +69,16 @@ export default (props) => {
             try {
                 const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_clasificacion');
                 const data = await response.json();
+                data.unshift({ id: 0, clasificacion: "TODAS" });
                 setClasificacion(data);
                 await AsyncStorage.setItem('clasificacion', JSON.stringify(data));
             } catch (error) {
                 console.error('Error al obtener opciones desde la API:', error);
                 const storedClasificacion = await AsyncStorage.getItem('clasificacion');
                 if (storedClasificacion) {
-                    setClasificacion(JSON.parse(storedClasificacion));
+                    const parsedClasificacion = JSON.parse(storedClasificacion);
+                    parsedClasificacion.unshift({ id: 0, clasificacion: "TODAS" });
+                    setClasificacion(parsedClasificacion);
                 }
             }
         };
@@ -79,32 +88,41 @@ export default (props) => {
                 // Realizar la solicitud HTTP para obtener las opciones desde la API
                 const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_estados');
                 const data = await response.json();
+                data.unshift({ id: 0, estado: "TODOS" });
                 setEstados(data);
                 await AsyncStorage.setItem('estados', JSON.stringify(data));
             } catch (error) {
                 console.error('Error al obtener opciones desde la API:', error);
                 const storedEstado = await AsyncStorage.getItem('estados');
                 if (storedEstado) {
-                    setEstados(JSON.parse(storedEstado));
+                    const parsedEstado = JSON.parse(storedEstado);
+                    parsedEstado.unshift({ id: 0, estado: "TODOS" });
+                    setEstados(parsedEstado);
                 }
             }
         };
         async function fetchLocalOptionsFromAPI() {
             const storedOptions = await AsyncStorage.getItem('sedes');
             if (storedOptions) {
-                setOptions(JSON.parse(storedOptions));
+                const parsedOptions = JSON.parse(storedOptions);
+                parsedOptions.unshift({ id: 0, sede: "TODAS" });
+                setOptions(parsedOptions);
             }
         }
         async function fetchLocalEstado() {
             const storedEstado = await AsyncStorage.getItem('estados');
             if (storedEstado) {
-                setEstados(JSON.parse(storedEstado));
+                const parsedEstado = JSON.parse(storedEstado);
+                parsedEstado.unshift({ id: 0, estado: "TODOS" });
+                setEstados(parsedEstado);
             }
         }
         async function fetchLocalClasificacion() {
             const storedClasificacion = await AsyncStorage.getItem('clasificacion');
             if (storedClasificacion) {
-                setClasificacion(JSON.parse(storedClasificacion));
+                const parsedClasificacion = JSON.parse(storedClasificacion);
+                parsedClasificacion.unshift({ id: 0, clasificacion: "TODAS" });
+                setClasificacion(parsedClasificacion);
             }
         }
         async function fetchLocalUsuarios() {
@@ -155,10 +173,8 @@ export default (props) => {
         async function getData(e) {
             try {
                 if (e) {
-                    console.log("REMOTO");
                     const formData = new FormData();
                     formData.append('id', props.navigation.state.params.id);
-                    console.log(props.navigation.state.params.id);
                     const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=editar_inventario', {
                         method: 'POST',
                         body: formData,
@@ -180,34 +196,31 @@ export default (props) => {
                     setId(result.id);
                     setCuenta(result.cuenta);
                     setCodigoAF(result.codigo_af);
-                    setSAPPadre(result.sap_padre);
-                    setSAPComponente(result.sap_componente);
                     setCodigoFisico(result.codigo_fisico);
                     setDescripcion(result.descripcion);
                     setMarca(result.marca);
                     setModelo(result.modelo);
                     setSerie(result.serie);
                     setMedida(result.medida);
+                    setUnidad(result.unidad);
+                    setCantidad(result.cantidad);
                     setColor(result.color);
                     setDetalles(result.detalles);
                     setObservaciones(result.observaciones);
-                    setOtros(result.otros);
                     setCodInventario(result.cod_inventario);
+                    setFoto(result.foto);
                 } else {
-                    console.log("LOCALMENTE");
                     const storedProductos = await AsyncStorage.getItem('productos');
                     if (storedProductos) {
                         let obj = JSON.parse(storedProductos);
                         let producto = [];
                         console.log(props.navigation.state.params.id);
                         if (props.navigation.state.params.id < -1) {
-                            console.log("MENOR A 1");
                             producto = obj.filter(producto => producto.id_local == props.navigation.state.params.id);
                         } else {
                             producto = obj.filter(producto => producto.id == props.navigation.state.params.id);
                         }
                         if (producto) {
-                            console.log(producto[0].id_sede);
                             setSelectedOption(producto[0].id_sede);
                             if (producto[0].id_sede > 0) {
                                 fetchLocalEmplazamientosFromAPI(producto[0].id_sede);
@@ -219,19 +232,19 @@ export default (props) => {
                             setId(producto[0].id);
                             setCuenta(producto[0].cuenta);
                             setCodigoAF(producto[0].codigo_af);
-                            setSAPPadre(producto[0].sap_padre);
-                            setSAPComponente(producto[0].sap_componente);
                             setCodigoFisico(producto[0].codigo_fisico);
                             setDescripcion(producto[0].descripcion);
                             setMarca(producto[0].marca);
                             setModelo(producto[0].modelo);
                             setSerie(producto[0].serie);
                             setMedida(producto[0].medida);
+                            setUnidad(producto[0].unidad);
+                            setCantidad(producto[0].cantidad);
                             setColor(producto[0].color);
                             setDetalles(producto[0].detalles);
                             setObservaciones(producto[0].observaciones);
-                            setOtros(producto[0].otros);
                             setCodInventario(producto[0].cod_inventario);
+                            setFoto(producto[0].foto);
                         } else {
                             Alert.alert(
                                 'Alerta',
@@ -310,11 +323,19 @@ export default (props) => {
             if (status === 'granted') {
                 const photo = await cameraRef.takePictureAsync();
                 setPhotoUri(photo.uri);
+                setShow(false);
             } else {
                 console.error('Permission denied for camera');
             }
         }
     };
+    const openCamera = async () => {
+        setShow(true);
+    }
+    const closeCamera = () => {
+        setShow(false);
+        setPhotoUri(null);
+    }
     function formatDate(date) {
         var d = new Date(date),
             month = '' + (d.getMonth() + 1),
@@ -354,8 +375,6 @@ export default (props) => {
                 formData.append('id', id ? id : '');
                 formData.append('cuenta', cuenta ? cuenta : '');
                 formData.append('codigo_af', codigo_af ? codigo_af : '');
-                formData.append('sap_padre', sap_padre ? sap_padre : '');
-                formData.append('sap_componente', sap_componente ? sap_componente : '');
                 formData.append('codigo_fisico', codigo_fisico ? codigo_fisico : '');
                 formData.append('descripcion', descripcion ? descripcion : '');
                 formData.append('marca', marca ? marca : '');
@@ -365,13 +384,14 @@ export default (props) => {
                 formData.append('color', color ? color : '');
                 formData.append('detalles', detalles ? detalles : '');
                 formData.append('observaciones', observaciones ? observaciones : '');
-                formData.append('otros', otros ? otros : '');
                 formData.append('cod_inventario', cod_inventario ? cod_inventario : '');
                 formData.append('id_sede', selectedOption);
                 formData.append('id_estado', selectedEstado);
                 formData.append('id_clasificacion', selectedClasificacion);
                 formData.append('id_usuario', selectedUsuario);
                 formData.append('id_emplazamiento', selectedEmplazamiento);
+                formData.append('cantidad', cantidad);
+                formData.append('unidad', unidad);
                 let url = '';
                 if (id) {
                     url = 'https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=actualizar_inventario';
@@ -387,6 +407,17 @@ export default (props) => {
                 });
 
                 const result = await response.json();
+                Alert.alert(
+                    'Éxito',
+                    'Guardado Correctamente',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => console.log('OK Pressed'),
+                        },
+                    ],
+                    { cancelable: false }
+                );
                 console.log('Response from server:', result);
             } else {
                 if (id) {
@@ -398,6 +429,7 @@ export default (props) => {
                         const listaSedes = options.filter(item => item.id == selectedOption);
                         const listaUsuario = usuarios.filter(item => item.id == selectedUsuario);
                         const listaEmplazamientos = emplazamientos.filter(item => item.id == selectedEmplazamiento);
+                        const listaClasificacion = clasificacion.filter(item => item.id == selectedClasificacion);
                         console.log(fileName);
                         if (fileName == null) {
                             console.log("ES NULO FOTO");
@@ -405,8 +437,6 @@ export default (props) => {
                                 id: id ? id : '',
                                 cuenta: cuenta ? cuenta : '',
                                 codigo_af: codigo_af ? codigo_af : '',
-                                sap_padre: sap_padre ? sap_padre : '',
-                                sap_componente: sap_componente ? sap_componente : '',
                                 codigo_fisico: codigo_fisico ? codigo_fisico : '',
                                 descripcion: descripcion ? descripcion : '',
                                 marca: marca ? marca : '',
@@ -416,7 +446,6 @@ export default (props) => {
                                 color: color ? color : '',
                                 detalles: detalles ? detalles : '',
                                 observaciones: observaciones ? observaciones : '',
-                                otros: otros ? otros : '',
                                 cod_inventario: cod_inventario ? cod_inventario : '',
                                 id_sede: selectedOption,
                                 id_estado: selectedEstado,
@@ -427,7 +456,10 @@ export default (props) => {
                                 id_usuario: selectedUsuario,
                                 id_emplazamiento: selectedEmplazamiento,
                                 emplazamiento: listaEmplazamientos[0].emplazamiento,
-                                foto: productList[index].foto
+                                foto: productList[index].foto,
+                                clasificacion: listaClasificacion[0].clasificacion,
+                                unidad: unidad ? unidad : '',
+                                cantidad: cantidad ? cantidad : '',
                             };
                         } else {
                             console.log("NO ES NULO FOTO");
@@ -435,8 +467,6 @@ export default (props) => {
                                 id: id ? id : '',
                                 cuenta: cuenta ? cuenta : '',
                                 codigo_af: codigo_af ? codigo_af : '',
-                                sap_padre: sap_padre ? sap_padre : '',
-                                sap_componente: sap_componente ? sap_componente : '',
                                 codigo_fisico: codigo_fisico ? codigo_fisico : '',
                                 descripcion: descripcion ? descripcion : '',
                                 marca: marca ? marca : '',
@@ -446,7 +476,6 @@ export default (props) => {
                                 color: color ? color : '',
                                 detalles: detalles ? detalles : '',
                                 observaciones: observaciones ? observaciones : '',
-                                otros: otros ? otros : '',
                                 cod_inventario: cod_inventario ? cod_inventario : '',
                                 id_sede: selectedOption,
                                 id_estado: selectedEstado,
@@ -457,12 +486,15 @@ export default (props) => {
                                 nombres: listaUsuario[0].nombres,
                                 id_usuario: selectedUsuario,
                                 id_emplazamiento: selectedEmplazamiento,
+                                clasificacion: listaClasificacion[0].clasificacion,
                                 photo: {
                                     uri: photoUri,
                                     name: fileName,
                                     type: 'image/jpeg',
                                 },
-                                emplazamiento: listaEmplazamientos[0].emplazamiento
+                                emplazamiento: listaEmplazamientos[0].emplazamiento,
+                                unidad: unidad ? unidad : '',
+                                cantidad: cantidad ? cantidad : '',
                             };
                         }
                         await AsyncStorage.setItem('productos', JSON.stringify(productList));
@@ -495,6 +527,7 @@ export default (props) => {
                     const listaSedes = options.filter(item => item.id == selectedOption);
                     const listaUsuario = usuarios.filter(item => item.id == selectedUsuario);
                     const listaEmplazamientos = emplazamientos.filter(item => item.id == selectedEmplazamiento);
+                    const listaClasificacion = clasificacion.filter(item => item.id == selectedClasificacion);
                     const storedProductos = await AsyncStorage.getItem('productos');
                     let productList = storedProductos ? JSON.parse(storedProductos) : [];
                     if (photoUri) {
@@ -503,8 +536,6 @@ export default (props) => {
                                 id: id ? id : '-2',
                                 cuenta: cuenta ? cuenta : '',
                                 codigo_af: codigo_af ? codigo_af : '',
-                                sap_padre: sap_padre ? sap_padre : '',
-                                sap_componente: sap_componente ? sap_componente : '',
                                 codigo_fisico: codigo_fisico ? codigo_fisico : '',
                                 descripcion: descripcion ? descripcion : '',
                                 marca: marca ? marca : '',
@@ -514,7 +545,6 @@ export default (props) => {
                                 color: color ? color : '',
                                 detalles: detalles ? detalles : '',
                                 observaciones: observaciones ? observaciones : '',
-                                otros: otros ? otros : '',
                                 cod_inventario: cod_inventario ? cod_inventario : '',
                                 id_sede: selectedOption,
                                 id_estado: selectedEstado,
@@ -526,12 +556,15 @@ export default (props) => {
                                 id_usuario: selectedUsuario,
                                 id_emplazamiento: selectedEmplazamiento,
                                 emplazamiento: listaEmplazamientos[0].emplazamiento,
+                                clasificacion: listaClasificacion[0].clasificacion,
                                 id_local: 'id_' + Math.random().toString(16).slice(2),
                                 photo: {
                                     uri: photoUri,
                                     name: fileName,
                                     type: 'image/jpeg',
-                                }
+                                },
+                                unidad: unidad ? unidad : '',
+                                cantidad: cantidad ? cantidad : '',
                             }
                         );
                     } else {
@@ -540,8 +573,6 @@ export default (props) => {
                                 id: id ? id : '-2',
                                 cuenta: cuenta ? cuenta : '',
                                 codigo_af: codigo_af ? codigo_af : '',
-                                sap_padre: sap_padre ? sap_padre : '',
-                                sap_componente: sap_componente ? sap_componente : '',
                                 codigo_fisico: codigo_fisico ? codigo_fisico : '',
                                 descripcion: descripcion ? descripcion : '',
                                 marca: marca ? marca : '',
@@ -551,7 +582,6 @@ export default (props) => {
                                 color: color ? color : '',
                                 detalles: detalles ? detalles : '',
                                 observaciones: observaciones ? observaciones : '',
-                                otros: otros ? otros : '',
                                 cod_inventario: cod_inventario ? cod_inventario : '',
                                 id_sede: selectedOption,
                                 id_estado: selectedEstado,
@@ -563,7 +593,10 @@ export default (props) => {
                                 id_usuario: selectedUsuario,
                                 id_emplazamiento: selectedEmplazamiento,
                                 emplazamiento: listaEmplazamientos[0].emplazamiento,
-                                id_local: 'id_' + Math.random().toString(16).slice(2)
+                                clasificacion: listaClasificacion[0].clasificacion,
+                                id_local: 'id_' + Math.random().toString(16).slice(2),
+                                unidad: unidad ? unidad : '',
+                                cantidad: cantidad ? cantidad : '',
                             }
                         );
                     }
@@ -595,17 +628,40 @@ export default (props) => {
             </View>
             <View style={styles.container}>
                 <View style={styles.action}>
-                    <Camera
-                        ref={(ref) => {
-                            setCameraRef(ref);
-                        }}
-                        style={styles.camera}
-                        ratio="4:3"
-                    />
-                    <View style={styles.iconocirculo}>
-                        <MaterialIcons name='photo' style={styles.iconos} onPress={takePicture} />
-                    </View>
+                    {show ?
+                        <View style={[styles.action, { width: 200, height: 200 }]}>
+                            <Camera
+                                ref={(ref) => {
+                                    setCameraRef(ref);
+                                }}
+                                style={styles.camera}
+                                ratio="4:3"
+                            />
+                            <View style={styles.iconocirculo}>
+                                <MaterialIcons name='image' style={styles.iconos} onPress={takePicture} />
+                            </View>
+                        </View>
+                        :
+                        foto && !photoUri ?
+                            <Image style={{ width: 200, height: 200 }} source={{ uri: FileSystem.documentDirectory + 'uploads/' + foto }} /> : ''
 
+                    }
+
+                    {photoUri && !show ? <Image source={{ uri: photoUri }} style={{ width: 200, height: 200 }} /> : ''}
+                    {!show ?
+                        <View style={styles.iconocirculo}>
+                            <MaterialIcons name='camera' style={styles.iconos} onPress={openCamera} />
+                        </View> : ''
+                    }
+                    {show ?
+                        <View style={styles.iconocirculo}>
+                            <Pressable
+                                onPress={closeCamera}
+                            >
+                                <MaterialIcons name='close' style={styles.iconos} />
+                            </Pressable>
+                        </View> : ''
+                    }
                     <View style={styles.iconocirculo}>
                         <Pressable
                             onPress={uploadPhotoToServer}
@@ -613,8 +669,6 @@ export default (props) => {
                             <MaterialIcons name='check' style={styles.iconos} />
                         </Pressable>
                     </View>
-
-                    {photoUri && <Image source={{ uri: photoUri }} style={{ width: 200, height: 200 }} />}
                 </View>
                 <ScrollView style={styles.scrollView}>
                     <View style={styles.action}>
@@ -642,6 +696,28 @@ export default (props) => {
                         </View>
                     </View>
                     <View style={styles.action}>
+                        <View style={styles.action2}>
+                            <Text style={styles.label}>Cantidad:</Text>
+                            <TextInput
+                                placeholder="Cantidad"
+                                placeholderTextColor="#B2BABB"
+                                style={styles.textInput}
+                                value={cantidad ? cantidad : ''}
+                                onChangeText={text => setCantidad(text)}
+                            />
+                        </View>
+                        <View style={styles.action2}>
+                            <Text style={styles.label}>Unidad:</Text>
+                            <TextInput
+                                placeholder="Unidad"
+                                placeholderTextColor="#B2BABB"
+                                style={styles.textInput}
+                                value={unidad ? unidad : ''}
+                                onChangeText={text => setUnidad(text)}
+                            />
+                        </View>
+                    </View>
+                    <View style={styles.action}>
                         <View style={styles.action3}>
                             <Text style={styles.label}>Emplazamiento:</Text>
                             <Picker
@@ -664,28 +740,6 @@ export default (props) => {
                                 style={styles.textInput}
                                 value={codigo_af ? codigo_af : ''}
                                 onChangeText={text => setCodigoAF(text)}
-                            />
-                        </View>
-                        <View style={styles.action2}>
-                            <Text style={styles.label}>SAP Padre:</Text>
-                            <TextInput
-                                placeholder="SAP Padre"
-                                placeholderTextColor="#B2BABB"
-                                style={styles.textInput}
-                                value={sap_padre ? sap_padre : ''}
-                                onChangeText={text => setSAPPadre(text)}
-                            />
-                        </View>
-                    </View>
-                    <View style={styles.action}>
-                        <View style={styles.action2}>
-                            <Text style={styles.label}>SAP Componente:</Text>
-                            <TextInput
-                                placeholder="SAP Componente"
-                                placeholderTextColor="#B2BABB"
-                                style={styles.textInput}
-                                value={sap_componente ? sap_componente : ''}
-                                onChangeText={text => setSAPComponente(text)}
                             />
                         </View>
                         <View style={styles.action2}>
@@ -815,18 +869,6 @@ export default (props) => {
                                 style={styles.textInput}
                                 value={observaciones ? observaciones : ''}
                                 onChangeText={text => setObservaciones(text)}
-                            />
-                        </View>
-                    </View>
-                    <View style={styles.action}>
-                        <View style={styles.action3}>
-                            <Text style={styles.label}>Otros:</Text>
-                            <TextInput
-                                placeholder="Otros"
-                                placeholderTextColor="#B2BABB"
-                                style={styles.textInput}
-                                value={otros ? otros : ''}
-                                onChangeText={text => setOtros(text)}
                             />
                         </View>
                     </View>

@@ -36,8 +36,7 @@ export default class m_propietario extends Component {
                 <View style={styles.encabezado}>
                     <View>
                         <Text style={styles.textotitulo1}>Hola, {nombres}</Text>
-                        <Text style={styles.texto2}>¡Bienvenid(a)! </Text>
-                        <Text style={styles.cuenta}><Text style={styles.texto1}>Sede:</Text> <Text style={styles.texto2}>{sede}</Text></Text>
+                        <Text style={styles.texto2}>¡Bienvenido(a)! </Text>
                     </View>
                 </View>
                 {/*---------------------*/}

@@ -5,6 +5,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
+import LoadingModal from './LoadingModal';
 
 export default (props) => {
     const [productos, setProductos] = useState([]);
@@ -18,6 +19,7 @@ export default (props) => {
     const [connectionState, setConnectionState] = useState(null);
     const [isVisible, setVisible] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         verifyConnection();
@@ -38,6 +40,7 @@ export default (props) => {
         });
     }
     async function fetchLocalData() {
+        await AsyncStorage.setItem('estadoConexionAnterior', '1');
         const storedData = await AsyncStorage.getItem('productos');
         if (storedData) {
             setProductos(JSON.parse(storedData));
@@ -69,60 +72,12 @@ export default (props) => {
         }
     }
     async function fetchLocationsFromAPI() {
+        setLoading(true);
+        await AsyncStorage.setItem('estadoConexionAnterior', '0');
         console.log("DEVUELVO YA");
         const directoryInfo = await FileSystem.getInfoAsync(FileSystem.documentDirectory + 'uploads');
         if (!directoryInfo.exists) {
             await FileSystem.makeDirectoryAsync(FileSystem.documentDirectory + 'uploads', { intermediates: true });
-        }
-
-        try {
-            Alert.alert(
-                'Mensaje',
-                'Sincronizando Productos.',
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => console.log('OK Pressed'),
-                    },
-                ],
-                { cancelable: false }
-            );
-            const storedProductos = await AsyncStorage.getItem('productos');
-            const parsedProductos = JSON.parse(storedProductos);
-
-            // Iterar sobre cada elemento del productList
-            for (const producto of parsedProductos) {
-                const formData = new FormData(); // Crear un nuevo FormData para cada producto
-
-                // Iterar sobre cada campo del producto y agregarlo al FormData
-                for (const key in producto) {
-                    if (key === 'photo' && producto[key] instanceof Object) {
-                        // Si el campo es una imagen, agregarla al FormData con el nombre 'photo'
-                        formData.append('photo', {
-                            uri: producto[key].uri,
-                            name: producto[key].name,
-                            type: 'image/jpeg',
-                        });
-                    } else {
-                        // Si el campo no es una imagen, agregarlo al FormData con su clave correspondiente
-                        formData.append(key, producto[key]);
-                    }
-                }
-                fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=sincronizar_inventario', {
-                    method: 'POST',
-                    body: formData,
-                })
-                    .then(response => response.json() /*{
-                        //response.json()
-                        console.log(response.json());
-                    }*/)
-                    .then(data => {
-                        console.log(data);
-                    })
-                    .catch(error => console.error(`Error al enviar elemento:`, error));
-            }
-        } catch (error) {
-            console.error('Error al enviar los datos:', error);
         }
         try {
             const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_inventario');
@@ -147,6 +102,60 @@ export default (props) => {
                 setFilteredProductos(JSON.parse(storedData));
             }
         }
+        try {
+            const estadoConexionAnterior = await AsyncStorage.getItem('estadoConexionAnterior');
+            //if (estadoConexionAnterior) {
+            const parsedEstadoConexionAnterior = JSON.parse(estadoConexionAnterior);
+            //setProductos(JSON.parse(storedData));
+            //}
+            if (estadoConexionAnterior == '0') {
+                Alert.alert(
+                    'Mensaje',
+                    'Sincronizando Productos.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => console.log('OK Pressed'),
+                        },
+                    ],
+                    { cancelable: false }
+                );
+                const storedProductos = await AsyncStorage.getItem('productos');
+                const parsedProductos = JSON.parse(storedProductos);
+
+                // Iterar sobre cada elemento del productList
+                for (const producto of parsedProductos) {
+                    const formData = new FormData(); // Crear un nuevo FormData para cada producto
+
+                    // Iterar sobre cada campo del producto y agregarlo al FormData
+                    for (const key in producto) {
+                        if (key === 'photo' && producto[key] instanceof Object) {
+                            // Si el campo es una imagen, agregarla al FormData con el nombre 'photo'
+                            formData.append('photo', {
+                                uri: producto[key].uri,
+                                name: producto[key].name,
+                                type: 'image/jpeg',
+                            });
+                        } else {
+                            // Si el campo no es una imagen, agregarlo al FormData con su clave correspondiente
+                            formData.append(key, producto[key]);
+                        }
+                    }
+                    fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=sincronizar_inventario', {
+                        method: 'POST',
+                        body: formData,
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log(data);
+                        })
+                        .catch(error => console.error(`Error al enviar elemento:`, error));
+                }
+            }
+        } catch (error) {
+            console.error('Error al enviar los datos:', error);
+        }
+        setLoading(false);
     }
     const fetchOptionsFromAPI = async () => {
         try {
@@ -210,7 +219,7 @@ export default (props) => {
         if (storedEmplazamientos) {
             const parsedEmplazamientos = JSON.parse(storedEmplazamientos);
             parsedEmplazamientos.unshift({ id: 0, emplazamiento: "TODAS", id_sede: id_sede });
-            setEmplazamientos(parsedEmplazamientos.filter(item => item.is_sede == id_sede));
+            setEmplazamientos(parsedEmplazamientos.filter(item => item.id_sede == id_sede));
         }
     }
     const { navigate } = props.navigation;
@@ -412,6 +421,7 @@ export default (props) => {
                                         {producto.nombres != null ? <Text style={styles.texto2}>{producto.nombres}</Text> : null}
                                         <Text style={styles.texto2}>{producto.sede}</Text>
                                         <Text style={styles.texto2}>{producto.emplazamiento}</Text>
+                                        <Text style={styles.texto3}>{producto.clasificacion}</Text>
                                     </View>
                                 </View>
                                 <View style={styles.textoinfo}>
@@ -423,6 +433,7 @@ export default (props) => {
                         </Pressable>
                     ))}
                 </ScrollView>
+                <LoadingModal visible={loading} />
             </View>
         </View>
     );
@@ -469,6 +480,11 @@ const styles = StyleSheet.create({
     texto2: {
         color: '#0000CC',
         fontSize: 11,
+    },
+    texto3: {
+        color: '#000000',
+        fontSize: 12,
+        fontWeight: 'bold'
     },
     imglogo: {
         width: 90,
