@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Almacen",
-    "slug": "Puntos",
+    "slug": "almacenes",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/imgs/logoeg.png",
@@ -19,7 +19,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/imgs/logoeg.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
@@ -48,8 +48,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "12cf62d1-02ae-4d2d-9b33-fe4f8d6162a5"
+        "projectId": "fda7e953-6d6e-4a27-8f09-c2a6e2cf8528"
       }
-    }
+    },
+    "owner": "daranibar"
   }
 }

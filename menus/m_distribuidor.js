@@ -55,6 +55,13 @@ export default class m_propietario extends Component {
                             }}>
                             <Image style={styles.imageboton} source={require('../assets/imgs/menu_catalogo.png')} />
                         </Pressable>
+                        <Pressable
+                            onPress={() => navigate('ExportarReporte')}
+                            style={({ pressed }) => {
+                                return { opacity: pressed ? 0 : 1 }
+                            }}>
+                            <Image style={styles.imageboton} source={require('../assets/imgs/menu_reporte.png')} />
+                        </Pressable>
                     </View>
                 </View>
             </View>

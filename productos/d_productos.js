@@ -6,18 +6,20 @@ import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import LoadingModal from './LoadingModal';
+import { crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getEmplazamientoByIdSede, getInventarioById, getCountInventarioById, getAllInventarioFechaModificacion } from "./db";
 
 export default (props) => {
     const [productos, setProductos] = useState([]);
-    const [options, setOptions] = useState([]);
+    const [options, setSedes] = useState([]);
     const [emplazamientos, setEmplazamientos] = useState([]);
     const [usuarios, setUsuarios] = useState([]);
-    const [selectedOption, setSelectedOption] = useState(null);
+    const [selectedSede, setSelectedSede] = useState(null);
     const [selectedEmplazamiento, setSelectedEmplazamiento] = useState(null);
     const [selectedUsuario, setSelectedUsuario] = useState(null);
     const [filteredProductos, setFilteredProductos] = useState([]);
     const [connectionState, setConnectionState] = useState(null);
     const [isVisible, setVisible] = useState(false);
+    const [isVisibleUsuarios, setVisibleUsuarios] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -25,56 +27,92 @@ export default (props) => {
         verifyConnection();
     }, []);
     async function verifyConnection() {
-
+        crearInventario();
+        crearSedes();
+        crearEmplazamiento();
+        crearUsuario();
+        crearEstado();
+        crearClasificacion();
         NetInfo.addEventListener(state => {
+            //state.isConnected
             setConnectionState(state.isConnected);
             if (state.isConnected) {
-                fetchOptionsFromAPI();
-                fetchLocationsFromAPI();
-                fetchUsuariosFromAPI();
+                fetchSedesFromAPI();
+                fetchInventarioFromAPI();
             } else {
-                fetchLocalOptionsFromAPI();
-                fetchLocalData();
-                fetchLocalUsuarios();
+                fetchLocalSedes();
+                fetchLocalInventario();
             }
         });
     }
-    async function fetchLocalData() {
-        await AsyncStorage.setItem('estadoConexionAnterior', '1');
-        const storedData = await AsyncStorage.getItem('productos');
-        if (storedData) {
-            setProductos(JSON.parse(storedData));
-        }
+    async function fetchLocalInventario() {
+        console.log("Sin internet");
+        await AsyncStorage.setItem('estadoConexionAnterior', '0');
+
+        let productos = await getAllInventario();
+        setProductos(productos);
     }
-    const fetchUsuariosFromAPI = async () => {
+    const fetchUsuariosFromAPI = async (id_emplazamiento) => {
         try {
-            // Realizar la solicitud HTTP para obtener las opciones desde la API
-            const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_usuarios');
-            const data = await response.json();
-            data.unshift({ id: 0, nombres: "TODOS" });
-            setUsuarios(data);
-            await AsyncStorage.setItem('usuarios', JSON.stringify(data));
+            const storedUsuarios = await getAllUsuarios();//await AsyncStorage.getItem('usuarios');
+            //const parsedUsuarios = JSON.parse(storedUsuarios);
+            if (storedUsuarios && storedUsuarios.length > 0) {
+                const check = storedUsuarios.filter(item => item.id == 0 && item.id_emplazamiento == id_emplazamiento);
+                if (check.length == 0) {
+                    storedUsuarios.unshift({ id: 0, nombres: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
+                }
+                const usuariosFiltrados = storedUsuarios.filter(item => item.id_emplazamiento == id_emplazamiento);
+                setUsuarios(usuariosFiltrados);
+            } else {
+                // Realizar la solicitud HTTP para obtener las opciones desde la API
+                const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_usuarios_emplazamiento');
+                const data = await response.json();
+                const dataFiltered = data.filter(item => item.id_emplazamiento == id_emplazamiento);
+
+                let flag = 0;
+                if (data.length > await getCountUsuarios()) {
+                    flag = 1;
+                }
+                for (const usuario of data) {
+                    if (flag == 1) {
+                        await addUsuario(
+                            [
+                                usuario.id,
+                                null,
+                                usuario.nombres,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                usuario.id_emplazamiento
+                            ]);
+                    }
+                }
+
+                const storedUsuarios = await getAllUsuarios();
+                dataFiltered.unshift({ id: 0, nombres: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
+                setUsuarios(storedUsuarios.filter(item => item.id_emplazamiento == id_emplazamiento));
+
+            }
         } catch (error) {
             console.error('Error al obtener usuarios desde la API:', error);
-            const storedUsuarios = await AsyncStorage.getItem('usuarios');
-            if (storedUsuarios) {
-                storedUsuarios.unshift({ id: 0, sede: "TODAS" });
-                setUsuarios(JSON.parse(storedUsuarios));
-            }
         }
     };
-    async function fetchLocalUsuarios() {
-        const storedUsuarios = await AsyncStorage.getItem('usuarios');
+    async function fetchLocalUsuarios(id_emplazamiento) {
+        //const storedUsuarios = await AsyncStorage.getItem('usuarios');
+        const storedUsuarios = await getAllUsuarios();
         if (storedUsuarios) {
-            const parsedUsuarios = JSON.parse(storedUsuarios);
-            parsedUsuarios.unshift({ id: 0, nombres: "TODOS" });
-            setUsuarios(parsedUsuarios);
+            //const parsedUsuarios = JSON.parse(storedUsuarios);
+            storedUsuarios.unshift({ id: 0, nombres: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
+            setUsuarios(storedUsuarios.filter(item => item.id_emplazamiento == id_emplazamiento));
         }
     }
-    async function fetchLocationsFromAPI() {
+    async function fetchInventarioFromAPI() {
         setLoading(true);
-        await AsyncStorage.setItem('estadoConexionAnterior', '0');
-        console.log("DEVUELVO YA");
+        const estadoConexionAnterior = await AsyncStorage.getItem('estadoConexionAnterior');
+        await AsyncStorage.setItem('estadoConexionAnterior', '1');
+        var inventarios = [];
         const directoryInfo = await FileSystem.getInfoAsync(FileSystem.documentDirectory + 'uploads');
         if (!directoryInfo.exists) {
             await FileSystem.makeDirectoryAsync(FileSystem.documentDirectory + 'uploads', { intermediates: true });
@@ -82,32 +120,63 @@ export default (props) => {
         try {
             const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_inventario');
             const data = await response.json();
-            const inventarios = data;
-
+            inventarios = data;
+            let flag = 0;
+            if (data.length >= await getCountInventario()) {
+                flag = 1;
+            }
+            setProductos(inventarios);
             for (const inventario of inventarios) {
                 const fotoExists = await checkFileExists(inventario.foto);
                 if (!fotoExists) {
                     await downloadImage(inventario.foto);
                 }
+                if (flag == 1) {
+                    if (await getCountInventarioById(inventario.id) == 0) {
+                        await addInventario(
+                            [
+                                inventario.id,
+                                inventario.cuenta,
+                                inventario.id_sede,
+                                inventario.codigo_af,
+                                inventario.sap_padre,
+                                inventario.sap_comp,
+                                inventario.codigo_fisico,
+                                inventario.descripcion,
+                                inventario.marca,
+                                inventario.modelo,
+                                inventario.serie,
+                                inventario.medida,
+                                inventario.color,
+                                inventario.detalles,
+                                inventario.observaciones,
+                                inventario.otros,
+                                inventario.id_usuario,
+                                inventario.inventariador,
+                                inventario.id_clasificacion,
+                                inventario.id_estado,
+                                inventario.usuario_creacion,
+                                inventario.fecha_creacion,
+                                inventario.foto,
+                                inventario.id_emplazamiento,
+                                inventario.cantidad,
+                                inventario.unidad,
+                                null
+                            ]
+                        );
+                    }
+                }
             }
-            setProductos(inventarios);
-            setFilteredProductos(inventarios);
 
-            await AsyncStorage.setItem('productos', JSON.stringify(inventarios));
+            console.log("SI TRAJE");
         } catch (error) {
             console.error('Error al obtener datos de la API AKI:', error);
             const storedData = await AsyncStorage.getItem('productos');
             if (storedData) {
                 setProductos(JSON.parse(storedData));
-                setFilteredProductos(JSON.parse(storedData));
             }
         }
         try {
-            const estadoConexionAnterior = await AsyncStorage.getItem('estadoConexionAnterior');
-            //if (estadoConexionAnterior) {
-            const parsedEstadoConexionAnterior = JSON.parse(estadoConexionAnterior);
-            //setProductos(JSON.parse(storedData));
-            //}
             if (estadoConexionAnterior == '0') {
                 Alert.alert(
                     'Mensaje',
@@ -120,69 +189,95 @@ export default (props) => {
                     ],
                     { cancelable: false }
                 );
-                const storedProductos = await AsyncStorage.getItem('productos');
-                const parsedProductos = JSON.parse(storedProductos);
-
+                //const storedProductos = await AsyncStorage.getItem('productos');
+                const parsedProductos = await getAllInventarioFechaModificacion(); //JSON.parse(storedProductos);
+                console.log(parsedProductos);
                 // Iterar sobre cada elemento del productList
                 for (const producto of parsedProductos) {
-                    const formData = new FormData(); // Crear un nuevo FormData para cada producto
-
-                    // Iterar sobre cada campo del producto y agregarlo al FormData
-                    for (const key in producto) {
-                        if (key === 'photo' && producto[key] instanceof Object) {
-                            // Si el campo es una imagen, agregarla al FormData con el nombre 'photo'
-                            formData.append('photo', {
-                                uri: producto[key].uri,
-                                name: producto[key].name,
-                                type: 'image/jpeg',
-                            });
-                        } else {
-                            // Si el campo no es una imagen, agregarlo al FormData con su clave correspondiente
-                            formData.append(key, producto[key]);
+                    if (!producto.fecha_modificacion == "") {
+                        const formData = new FormData(); // Crear un nuevo FormData para cada producto
+                        // Iterar sobre cada campo del producto y agregarlo al FormData
+                        for (const key in producto) {
+                            if (key === 'foto' && producto[key] != null) {
+                                // Si el campo es una imagen, agregarla al FormData con el nombre 'photo'
+                                formData.append('photo', {
+                                    uri: FileSystem.documentDirectory + 'uploads/' + producto[key],
+                                    name: producto[key],
+                                    type: 'image/jpeg',
+                                });
+                                formData.append(key, producto[key]);
+                            } else {
+                                // Si el campo no es una imagen, agregarlo al FormData con su clave correspondiente
+                                formData.append(key, producto[key]);
+                            }
                         }
-                    }
-                    fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=sincronizar_inventario', {
-                        method: 'POST',
-                        body: formData,
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log(data);
+                        fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=sincronizar_inventario', {
+                            method: 'POST',
+                            body: formData,
                         })
-                        .catch(error => console.error(`Error al enviar elemento:`, error));
+                            .then(response => response.json())
+                            .then(data => {
+                                console.log(data);
+                            })
+                            .catch(error => console.error(`Error al enviar elemento:`, error));
+                    }
                 }
             }
         } catch (error) {
             console.error('Error al enviar los datos:', error);
         }
+        await AsyncStorage.setItem('productos', JSON.stringify(inventarios));
         setLoading(false);
     }
-    const fetchOptionsFromAPI = async () => {
+    const fetchSedesFromAPI = async () => {
         try {
-            // Realizar la solicitud HTTP para obtener las opciones desde la API
-            const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_sedes');
-            const data = await response.json();
-            data.unshift({ id: 0, sede: "TODAS" });
-            setOptions(data);
-            await AsyncStorage.setItem('sedes', JSON.stringify(data));
-        } catch (error) {
-            const storedOptions = await AsyncStorage.getItem('sedes');
-            console.log("SEDES DEL LOCAL");
-            console.log(storedOptions);
-            if (storedOptions) {
-                storedOptions.unshift({ id: 0, sede: "TODAS" });
-                setOptions(JSON.parse(storedOptions));
+            const parsedSedes = await getAllSedes();
+            //const parsedSedes = JSON.parse(storedOptions);
+            if (parsedSedes && parsedSedes.length > 0) {
+                console.log("HAY SEDES EN SQLITE");
+                const check = parsedSedes.filter(item => item.id == 0);
+                if (check.length == 0) {
+                    parsedSedes.unshift({ id: 0, sede: "--SELECCIONE--" });
+                }
+                setSedes(parsedSedes);
+            } else {
+                console.log("NO HAY SEDES EN SQLITE");
+                // Realizar la solicitud HTTP para obtener las opciones desde la API
+                const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_sedes');
+                const data = await response.json();
+                let flag = 0;
+                if (data.length > await getCountSedes()) {
+                    flag = 1;
+                    console.log("HAY MAS SEDES EN DATA QUE SQLITE");
+                }
+                for (const sede of data) {
+                    if (flag == 1) {
+                        await addSede(
+                            [
+                                sede.id,
+                                sede.codigo,
+                                sede.sede,
+                                sede.usuario_creacion,
+                                sede.fecha_creacion
+                            ]
+                        );
+                    }
+                }
+                data.unshift({ id: 0, sede: "--SELECCIONE--" });
+                setSedes(data);
+                //await AsyncStorage.setItem('sedes', JSON.stringify(data));
             }
+        } catch (error) {
             console.error('Error al obtener opciones desde la API:', error);
         }
     };
 
-    async function fetchLocalOptionsFromAPI() {
-        const storedOptions = await AsyncStorage.getItem('sedes');
+    async function fetchLocalSedes() {
+        const storedOptions = await getAllSedes();
         if (storedOptions) {
-            const parsedOptions = JSON.parse(storedOptions);
-            parsedOptions.unshift({ id: 0, sede: "TODAS" });
-            setOptions(parsedOptions);
+            //const parsedOptions = JSON.parse(storedOptions);
+            storedOptions.unshift({ id: 0, sede: "--SELECCIONE--" });
+            setSedes(storedOptions);
         }
     }
     const handleRefresh = async () => {
@@ -197,46 +292,54 @@ export default (props) => {
     }
     const fetchEmplazamientosFromAPI = async (id_sede) => {
         try {
-            const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_emplazamientos');
-            const data = await response.json();
-            data.unshift({ id: 0, emplazamiento: "TODAS", id_sede: id_sede });
-            await AsyncStorage.setItem('emplazamientos', JSON.stringify(data));
+            const storedEmplazamientos = await getEmplazamientoByIdSede(id_sede);
+            if (storedEmplazamientos && storedEmplazamientos.length > 0) {
+                storedEmplazamientos.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
+                setEmplazamientos(storedEmplazamientos);
+            } else {
+                const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_emplazamientos');
+                const data = await response.json();
 
-            setEmplazamientos(data.filter(item => item.id_sede == id_sede));
+                let flag = 0;
+                if (data.length > await getCountEmplazamiento()) {
+                    flag = 1;
+                }
+                for (const emplazamiento of data) {
+                    if (flag == 1) {
+                        await addEmplazamiento(
+                            [
+                                emplazamiento.id,
+                                emplazamiento.id_sede,
+                                emplazamiento.codigo,
+                                emplazamiento.emplazamiento,
+                                emplazamiento.usuario_creacion,
+                                emplazamiento.fecha_creacion
+                            ]
+                        );
+                    }
+                }
+
+                const storedEmplazamientos2 = await getEmplazamientoByIdSede(id_sede);
+                storedEmplazamientos2.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
+                setEmplazamientos(storedEmplazamientos2);
+            }
         } catch (error) {
             console.error('Error al obtener emplazamientos desde la API:', error);
-            const storedEmplazamientos = await AsyncStorage.getItem('emplazamientos');
-            if (storedEmplazamientos) {
-                const parsedEmplazamientos = JSON.parse(storedEmplazamientos);
-                parsedEmplazamientos.unshift({ id: 0, emplazamiento: "TODAS", id_sede: id_sede });
-                setEmplazamientos(parsedEmplazamientos.filter(item => item.id_sede == id_sede));
-            }
         }
     };
 
     async function fetchLocalEmplazamientosFromAPI(id_sede) {
-        const storedEmplazamientos = await AsyncStorage.getItem('emplazamientos');
+        const storedEmplazamientos = await getAllEmplazamientos();//await AsyncStorage.getItem('emplazamientos');
         if (storedEmplazamientos) {
-            const parsedEmplazamientos = JSON.parse(storedEmplazamientos);
-            parsedEmplazamientos.unshift({ id: 0, emplazamiento: "TODAS", id_sede: id_sede });
-            setEmplazamientos(parsedEmplazamientos.filter(item => item.id_sede == id_sede));
+            storedEmplazamientos.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
+            setEmplazamientos(storedEmplazamientos.filter(item => item.id_sede == id_sede));
         }
     }
     const { navigate } = props.navigation;
-    const handleOptionChange = (value) => {
-        setSelectedOption(value);
+    const handleSedeChange = (value) => {
+        setLoading(true);
+        setSelectedSede(value);
         if (value > 0) {
-            if (selectedUsuario > 0) {
-                const prev = productos.filter(producto => producto.id_usuario == selectedUsuario);
-                setFilteredProductos(prev.filter(producto =>
-                    producto.id_sede == value
-                ));
-            } else {
-                const productosFiltrados = productos.filter(producto =>
-                    producto.id_sede == value
-                );
-                setFilteredProductos(productosFiltrados);
-            }
             if (connectionState) {
                 fetchEmplazamientosFromAPI(value);
             } else {
@@ -244,60 +347,49 @@ export default (props) => {
             }
             setVisible(true);
         } else {
-            if (selectedUsuario > 0) {
-                setFilteredProductos(productos.filter(producto => producto.id_usuario == selectedUsuario));
-            } else {
-                setVisible(false);
-                setFilteredProductos(productos);
-            }
+            setFilteredProductos([]);
+            setVisible(false);
+            setVisibleUsuarios(false);
+            setSelectedEmplazamiento(0);
         }
+        setLoading(false);
     };
     const handleEmplazamientoChange = (value) => {
         setSelectedEmplazamiento(value);
-
+        setLoading(true);
         if (value > 0) {
-            const productosFiltrados = filteredProductos.filter(producto => producto.id_emplazamiento == value);
-            setFilteredProductos(productosFiltrados);
-        } else {
-            if (selectedUsuario > 0) {
-                setFilteredProductos(productos.filter(producto =>
-                    producto.id_usuario == selectedUsuario && producto.id_sede == selectedOption
-                ));
+            if (connectionState) {
+                fetchUsuariosFromAPI(value);
             } else {
-                setFilteredProductos(productos.filter(producto =>
-                    producto.id_sede == selectedOption
-                ));
+                fetchLocalUsuarios(value);
             }
+            setVisibleUsuarios(true);
+        } else {
+            setFilteredProductos([]);
+            setVisibleUsuarios(false);
+            setSelectedUsuario(0);
         }
+        setLoading(false);
     }
     const handleUsuarioChange = (value) => {
+        setLoading(true);
         setSelectedUsuario(value);
         if (value > 0) {
-            if (selectedOption > 0) {
-                const productosFiltrados = filteredProductos.filter(producto => producto.id_usuario == value);
-                setFilteredProductos(productosFiltrados);
-            } else {
-                const productosFiltrados = productos.filter(producto => producto.id_usuario == value);
-                setFilteredProductos(productosFiltrados);
-            }
+            const productosFiltrados1 = productos.filter(
+                producto => producto.id_sede == selectedSede
+            );
+            const productosFiltrados2 = productosFiltrados1.filter(
+                producto => producto.id_emplazamiento == selectedEmplazamiento
+            );
+            const productosFiltrados3 = productosFiltrados2.filter(
+                producto =>
+                    producto.id_usuario == value
+            );
+            setFilteredProductos(productosFiltrados3);
         } else {
-            if (selectedOption > 0) {
-                if (selectedEmplazamiento > 0) {
-                    const prev = productos.filter(producto =>
-                        producto.id_sede == selectedOption
-                    );
-                    setFilteredProductos(prev.filter(
-                        producto => producto.id_emplazamiento == selectedEmplazamiento
-                    ));
-                } else {
-                    setFilteredProductos(productos.filter(producto =>
-                        producto.id_sede == selectedOption
-                    ));
-                }
-            } else {
-                setFilteredProductos(productos);
-            }
+            setFilteredProductos([]);
         }
+        setLoading(false);
     }
     const downloadImage = async (foto) => {
         if (foto && foto != "null") {
@@ -323,15 +415,24 @@ export default (props) => {
         }
     };
 
-    const filtrarProductos = (text) => {
+    const filtrarProductos = async (text) => {
         // Filtrar productos basados en el texto de búsqueda
         if (text) {
-            const productosFiltrados = filteredProductos.filter(producto =>
-                producto.descripcion.toLowerCase().includes(text.toLowerCase()) || producto.codigo_af.toLowerCase().includes(text.toLowerCase()) || producto.codigo_fisico.toLowerCase().includes(text.toLowerCase())
+            if (productos.length == 0) {
+                console.log("Tomando productos desde Archivo");
+                setProductos(data);
+                await AsyncStorage.setItem('productos', JSON.stringify(data));
+            }
+            const productosFiltrados = productos.filter(producto =>
+                (producto.descripcion.toLowerCase().includes(text.toLowerCase()) || producto.codigo_af.toLowerCase().includes(text.toLowerCase()) || producto.codigo_fisico.toLowerCase().includes(text.toLowerCase()) || producto.modelo.toLowerCase().includes(text.toLowerCase()) || producto.serie.toLowerCase().includes(text.toLowerCase())) && text.length >= 3
             );
+            /*if (text.length >= 3) {
+                const productosFiltrados = await getAllInventarioByText(text.toLowerCase());
+                setFilteredProductos(productosFiltrados);
+            }*/
             setFilteredProductos(productosFiltrados);
         } else {
-            setFilteredProductos(productos);
+            setFilteredProductos([]);
         }
     }
 
@@ -344,8 +445,8 @@ export default (props) => {
                 <View style={styles.textoinfo2}>
                     <View style={styles.action}>
                         <Picker
-                            selectedValue={selectedOption}
-                            onValueChange={handleOptionChange}
+                            selectedValue={selectedSede}
+                            onValueChange={handleSedeChange}
                             style={[styles.textInput2]}
                         >
                             {options.map((option) => (
@@ -364,14 +465,14 @@ export default (props) => {
                             ))}
                         </Picker>
                     </View>
-                    <View style={styles.action}>
+                    <View style={[styles.action, { display: isVisibleUsuarios ? 'flex' : 'none' }]}>
                         <Picker
                             selectedValue={selectedUsuario}
                             onValueChange={handleUsuarioChange}
                             style={styles.textInput}
                         >
                             {usuarios.map((usuario) => (
-                                <Picker.Item style={{ fontSize: 12 }} key={usuario.id} label={usuario.nombres} value={usuario.id} />
+                                <Picker.Item style={{ fontSize: 12 }} key={usuario.id_remoto} label={usuario.nombres} value={usuario.id_remoto} />
                             ))}
                         </Picker>
                     </View>
@@ -428,6 +529,8 @@ export default (props) => {
                                     <Text style={[styles.texto1, styles.textoDerecha]}>{producto.cuenta}</Text>
                                     <Text style={[styles.texto2, styles.textoDerecha]}>{producto.codigo_af}</Text>
                                     <Text style={[styles.texto2, styles.textoDerecha]}>{producto.codigo_fisico}</Text>
+                                    <Text style={[styles.texto2, styles.textoDerecha]}>{producto.modelo}</Text>
+                                    <Text style={[styles.texto2, styles.textoDerecha]}>{producto.serie}</Text>
                                 </View>
                             </View>
                         </Pressable>

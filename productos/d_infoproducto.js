@@ -2,20 +2,22 @@ import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Image, Pressable, Text, ScrollView, TextInput, Alert } from "react-native";
 import { Picker } from '@react-native-picker/picker';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Camera } from 'expo-camera';
+import { Camera, CameraView } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
+import LoadingModal from './LoadingModal';
+import { crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, getInventarioByIdLocal, updateInventario, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento } from "./db";
 
 export default (props) => {
 
-    const [options, setOptions] = useState([]);
+    const [sedes, setSedes] = useState([]);
     const [estados, setEstados] = useState([]);
     const [clasificacion, setClasificacion] = useState([]);
     const [usuarios, setUsuarios] = useState([]);
     const [emplazamientos, setEmplazamientos] = useState([]);
     const [selectedEmplazamiento, setSelectedEmplazamiento] = useState(null);
-    const [selectedOption, setSelectedOption] = useState(null);
+    const [selectedSede, setSelectedSede] = useState(null);
     const [selectedEstado, setSelectedEstado] = useState(null);
     const [selectedClasificacion, setSelectedClasificacion] = useState(null);
     const [selectedUsuario, setSelectedUsuario] = useState(null);
@@ -34,7 +36,6 @@ export default (props) => {
     const [color, setColor] = useState(null);
     const [detalles, setDetalles] = useState(null);
     const [observaciones, setObservaciones] = useState(null);
-    const [cod_inventario, setCodInventario] = useState(null);
     const [id, setId] = useState(null);
     const [foto, setFoto] = useState(null);
     const [connectionState, setConnectionState] = useState(null);
@@ -43,269 +44,339 @@ export default (props) => {
     const [cameraRef, setCameraRef] = useState(null);
 
     const [show, setShow] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [inventariador, setInventariador] = useState(null);
+
+    const [productos, setProductos] = useState([]);
 
     useEffect(() => {
         // Función para cargar las opciones desde la API
-        const fetchOptionsFromAPI = async () => {
-            try {
-                // Realizar la solicitud HTTP para obtener las opciones desde la API
-                const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_sedes');
-                const data = await response.json();
-                data.unshift({ id: 0, sede: "TODAS" });
-                setOptions(data);
-                await AsyncStorage.setItem('sedes', JSON.stringify(data));
-            } catch (error) {
-                console.error('Error al obtener opciones desde la API:', error);
-                const storedOptions = await AsyncStorage.getItem('sedes');
-                if (storedOptions) {
-                    const parsedOptions = JSON.parse(storedOptions);
-                    parsedOptions.unshift({ id: 0, sede: "TODAS" });
-                    setOptions(parsedOptions);
+        const unsubscribe = NetInfo.addEventListener(async state => {
+            setLoading(true);
+            AsyncStorage.getItem('usuarioLogin').then((storedData) => {
+                const dataLogin = JSON.parse(storedData);
+                setInventariador(dataLogin.id);
+            }).catch((error) => {
+                console.error('Error al obtener datos del usuario:', error);
+            });
+            //state.isConnected
+
+            setConnectionState(state.isConnected);
+            if (state.isConnected) {
+                fetchSedesFromAPI();
+                fetchEstado();
+                fetchClasificacion();
+                if (props.navigation.state.params.id != -1) {
+                    getData(true);
+                }
+            } else {
+                fetchLocalSedes();
+                fetchLocalEstado();
+                fetchLocalClasificacion();
+                if (props.navigation.state.params.id != -1) {
+                    getData(false);
                 }
             }
-        };
 
-        const fetchClasificacion = async () => {
-            try {
+            setLoading(false);
+        });
+        return () => unsubscribe();
+    }, []);
+    const fetchClasificacion = async () => {
+        try {
+            const parsedClasificacion = await getAllClasificacion();
+            if (parsedClasificacion && parsedClasificacion.length > 0) {
+                const check = parsedClasificacion.filter(item => item.id == 0);
+                if (check.length == 0) {
+                    parsedClasificacion.unshift({ id: 0, clasificacion: "--SELECCIONE--" });
+                }
+                setClasificacion(parsedClasificacion);
+            } else {
                 const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_clasificacion');
                 const data = await response.json();
-                data.unshift({ id: 0, clasificacion: "TODAS" });
-                setClasificacion(data);
-                await AsyncStorage.setItem('clasificacion', JSON.stringify(data));
-            } catch (error) {
-                console.error('Error al obtener opciones desde la API:', error);
-                const storedClasificacion = await AsyncStorage.getItem('clasificacion');
-                if (storedClasificacion) {
-                    const parsedClasificacion = JSON.parse(storedClasificacion);
-                    parsedClasificacion.unshift({ id: 0, clasificacion: "TODAS" });
-                    setClasificacion(parsedClasificacion);
-                }
-            }
-        };
 
-        const fetchEstado = async () => {
-            try {
+                let flag = 0;
+                if (data.length > await getCountClasificacion()) {
+                    flag = 1;
+                }
+
+                for (const clasificacion of data) {
+                    if (flag == 1) {
+                        await addClasificacion(
+                            [
+                                clasificacion.id,
+                                clasificacion.clasificacion
+                            ]
+                        );
+                    }
+                }
+
+                data.unshift({ id: 0, clasificacion: "--SELECCIONE--" });
+                setClasificacion(data);
+            }
+        } catch (error) {
+            console.error('Error al obtener clasificaciones desde la API:', error);
+        }
+    };
+
+    const fetchEstado = async () => {
+        try {
+            const parsedEstado = await getAllEstado();
+            //const parsedEstado = JSON.parse(storedOptions);
+            if (parsedEstado && parsedEstado.length > 0) {
+                const check = parsedEstado.filter(item => item.id == 0);
+                if (check.length == 0) {
+                    parsedEstado.unshift({ id: 0, estado: "--SELECCIONE--" });
+                }
+                setEstados(parsedEstado);
+            } else {
                 // Realizar la solicitud HTTP para obtener las opciones desde la API
                 const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_estados');
                 const data = await response.json();
-                data.unshift({ id: 0, estado: "TODOS" });
+
+                let flag = 0;
+                if (data.length > await getCountEstado()) {
+                    flag = 1;
+                }
+
+                for (const estado of data) {
+                    if (flag == 1) {
+                        await addEstado(
+                            [
+                                estado.id,
+                                estado.estado
+                            ]
+                        );
+                    }
+                }
+
+                data.unshift({ id: 0, estado: "--SELECCIONE--" });
                 setEstados(data);
-                await AsyncStorage.setItem('estados', JSON.stringify(data));
-            } catch (error) {
-                console.error('Error al obtener opciones desde la API:', error);
-                const storedEstado = await AsyncStorage.getItem('estados');
-                if (storedEstado) {
-                    const parsedEstado = JSON.parse(storedEstado);
-                    parsedEstado.unshift({ id: 0, estado: "TODOS" });
-                    setEstados(parsedEstado);
-                }
             }
-        };
-        async function fetchLocalOptionsFromAPI() {
-            const storedOptions = await AsyncStorage.getItem('sedes');
-            if (storedOptions) {
-                const parsedOptions = JSON.parse(storedOptions);
-                parsedOptions.unshift({ id: 0, sede: "TODAS" });
-                setOptions(parsedOptions);
-            }
+        } catch (error) {
+            console.error('Error al obtener estados desde la API:', error);
         }
-        async function fetchLocalEstado() {
-            const storedEstado = await AsyncStorage.getItem('estados');
-            if (storedEstado) {
-                const parsedEstado = JSON.parse(storedEstado);
-                parsedEstado.unshift({ id: 0, estado: "TODOS" });
-                setEstados(parsedEstado);
+    };
+    const fetchSedesFromAPI = async () => {
+        try {
+            const storedOptions = await getAllSedes();
+            if (storedOptions && storedOptions.length > 0) {
+                storedOptions.unshift({ id: 0, sede: "--SELECCIONE--", codigo: '000', usuario_creacion: null, fecha_creacion: null });
+                setSedes(storedOptions);
             }
+        } catch (error) {
+            console.error('Error al obtener sedes desde la API:', error);
         }
-        async function fetchLocalClasificacion() {
-            const storedClasificacion = await AsyncStorage.getItem('clasificacion');
-            if (storedClasificacion) {
-                const parsedClasificacion = JSON.parse(storedClasificacion);
-                parsedClasificacion.unshift({ id: 0, clasificacion: "TODAS" });
-                setClasificacion(parsedClasificacion);
-            }
+    };
+    async function fetchLocalSedes() {
+        const storedOptions = await getAllSedes();//await AsyncStorage.getItem('sedes');
+        if (storedOptions) {
+            storedOptions.unshift({ id: 0, sede: "--SELECCIONE--", codigo: '000', usuario_creacion: null, fecha_creacion: null });
+            setSedes(storedOptions);
         }
-        async function fetchLocalUsuarios() {
-            const storedUsuarios = await AsyncStorage.getItem('usuarios');
-            if (storedUsuarios) {
-                const parsedUsuarios = JSON.parse(storedUsuarios);
-                parsedUsuarios.unshift({ id: 0, nombres: "TODOS" });
-                setUsuarios(parsedUsuarios);
-            }
+    }
+    async function fetchLocalEstado() {
+        const storedEstado = await getAllEstado();//await AsyncStorage.getItem('estados');
+        if (storedEstado) {
+            storedEstado.unshift({ id: 0, estado: "--SELECCIONE--" });
+            setEstados(storedEstado);
         }
-        const fetchUsuariosFromAPI = async () => {
-            try {
-                // Realizar la solicitud HTTP para obtener las opciones desde la API
-                const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_usuarios');
-                const data = await response.json();
-                data.unshift({ id: 0, nombres: "TODOS" });
-                setUsuarios(data);
-                await AsyncStorage.setItem('usuarios', JSON.stringify(data));
-            } catch (error) {
-                console.error('Error al obtener usuarios desde la API:', error);
-                const storedUsuarios = await AsyncStorage.getItem('usuarios');
-                if (storedUsuarios) {
-                    storedUsuarios.unshift({ id: 0, sede: "TODOS" });
-                    setUsuarios(JSON.parse(storedUsuarios));
-                }
-            }
-        };
-        const unsubscribe = NetInfo.addEventListener(state => {
-            //state.isConnected
-            setConnectionState(state.isConnected);
-            if (state.isConnected) {
-                fetchOptionsFromAPI();
-                fetchEstado();
-                fetchClasificacion();
-                fetchUsuariosFromAPI();
-            } else {
-                fetchLocalOptionsFromAPI();
-                fetchLocalEstado();
-                fetchLocalClasificacion();
-                fetchLocalUsuarios();
-            }
-            if (props.navigation.state.params.id != -1) {
-                getData(state.isConnected);
-            }
-        });
-        return () => unsubscribe();
+    }
+    async function fetchLocalClasificacion() {
+        const storedClasificacion = await getAllClasificacion();//await AsyncStorage.getItem('clasificacion');
+        if (storedClasificacion) {
+            storedClasificacion.unshift({ id: 0, clasificacion: "--SELECCIONE--" });
+            setClasificacion(storedClasificacion);
+        }
+    }
+    async function getData(e) {
+        try {
+            //setLoading(true);
+            if (e) {
+                console.log("SI ES e");
+                const formData = new FormData();
+                formData.append('id', props.navigation.state.params.id);
+                const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=editar_inventario', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
 
-        async function getData(e) {
-            try {
-                if (e) {
-                    const formData = new FormData();
-                    formData.append('id', props.navigation.state.params.id);
-                    const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=editar_inventario', {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'Content-Type': 'multipart/form-data',
-                        },
-                    });
+                const result = await response.json();
+                const la_sede = await getSedeByID(result.id_sede);
+                const el_emplazamiento = await getEmplazamientoByID(result.id_emplazamiento);
 
-                    const result = await response.json();
-
-                    setSelectedOption(result.id_sede);
-                    if (result.id_sede > 0) {
-                        fetchEmplazamientosFromAPI(result.id_sede);
-                    }
-                    setSelectedEmplazamiento(result.id_emplazamiento);
-                    setSelectedEstado(result.id_estado);
-                    setSelectedClasificacion(result.id_clasificacion);
-                    setSelectedUsuario(result.id_usuario);
-                    setId(result.id);
-                    setCuenta(result.cuenta);
-                    setCodigoAF(result.codigo_af);
-                    setCodigoFisico(result.codigo_fisico);
-                    setDescripcion(result.descripcion);
-                    setMarca(result.marca);
-                    setModelo(result.modelo);
-                    setSerie(result.serie);
-                    setMedida(result.medida);
-                    setUnidad(result.unidad);
-                    setCantidad(result.cantidad);
-                    setColor(result.color);
-                    setDetalles(result.detalles);
-                    setObservaciones(result.observaciones);
-                    setCodInventario(result.cod_inventario);
-                    setFoto(result.foto);
+                setSelectedSede(la_sede.id);
+                if (result.id_estado == 0 || result.id_estado == '' || result.id_estado == null || result.id_estado == 'null') {
+                    setSelectedEstado(0);
                 } else {
-                    const storedProductos = await AsyncStorage.getItem('productos');
-                    if (storedProductos) {
-                        let obj = JSON.parse(storedProductos);
-                        let producto = [];
-                        console.log(props.navigation.state.params.id);
-                        if (props.navigation.state.params.id < -1) {
-                            producto = obj.filter(producto => producto.id_local == props.navigation.state.params.id);
-                        } else {
-                            producto = obj.filter(producto => producto.id == props.navigation.state.params.id);
-                        }
-                        if (producto) {
-                            setSelectedOption(producto[0].id_sede);
-                            if (producto[0].id_sede > 0) {
-                                fetchLocalEmplazamientosFromAPI(producto[0].id_sede);
-                            }
-                            setSelectedEmplazamiento(producto[0].id_emplazamiento);
-                            setSelectedEstado(producto[0].id_estado);
-                            setSelectedClasificacion(producto[0].id_clasificacion);
-                            setSelectedUsuario(producto[0].id_usuario);
-                            setId(producto[0].id);
-                            setCuenta(producto[0].cuenta);
-                            setCodigoAF(producto[0].codigo_af);
-                            setCodigoFisico(producto[0].codigo_fisico);
-                            setDescripcion(producto[0].descripcion);
-                            setMarca(producto[0].marca);
-                            setModelo(producto[0].modelo);
-                            setSerie(producto[0].serie);
-                            setMedida(producto[0].medida);
-                            setUnidad(producto[0].unidad);
-                            setCantidad(producto[0].cantidad);
-                            setColor(producto[0].color);
-                            setDetalles(producto[0].detalles);
-                            setObservaciones(producto[0].observaciones);
-                            setCodInventario(producto[0].cod_inventario);
-                            setFoto(producto[0].foto);
-                        } else {
-                            Alert.alert(
-                                'Alerta',
-                                'Producto no encontrado.',
-                                [
-                                    {
-                                        text: 'OK',
-                                        onPress: () => console.log('OK Pressed'),
-                                    },
-                                ],
-                                { cancelable: false }
-                            );
-                        }
-                    }
+                    const el_estado = await getEstadoByID(result.id_estado);
+                    setSelectedEstado(el_estado.id);
+                    handleEstadoChange(el_estado.id);
                 }
-            } catch (error) {
-                console.error('Error al obtener opciones desde la API:', error);
-            }
-        }
-    }, []);
+                if (result.id_clasificacion == 0 || result.id_clasificacion == '' || result.id_clasificacion == null || result.id_clasificacion == 'null') {
+                    setSelectedClasificacion(0);
+                } else {
+                    const la_clasificacion = await getClasificacionByID(result.id_clasificacion);
+                    setSelectedClasificacion(la_clasificacion.id);
+                    handleClasificacionChange(la_clasificacion.id);
+                }
 
+                setId(result.id);
+                setCuenta(result.cuenta);
+                setCodigoAF(result.codigo_af);
+                setCodigoFisico(result.codigo_fisico);
+                setDescripcion(result.descripcion);
+                setMarca(result.marca);
+                setModelo(result.modelo);
+                setSerie(result.serie);
+                setMedida(result.medida);
+                setUnidad(result.unidad);
+                setCantidad(result.cantidad);
+                setColor(result.color);
+                setDetalles(result.detalles);
+                setObservaciones(result.observaciones);
+                setFoto(result.foto);
+
+                handleSedeChange(la_sede.id);
+                setSelectedEmplazamiento(el_emplazamiento.id);
+                handleEmplazamientoChange(el_emplazamiento.id);
+                setSelectedUsuario(result.id_usuario);
+            } else {
+                let producto = [];
+                if (props.navigation.state.params.id < -1) {
+                    producto = await getInventarioByIdLocal(props.navigation.state.params.id);//parsedProductos.filter(producto => producto.id_local == props.navigation.state.params.id);
+                } else {
+                    producto = await getInventarioById(props.navigation.state.params.id);//parsedProductos.filter(producto => producto.id == props.navigation.state.params.id);
+                }
+                if (producto) {
+                    const id_sede = producto.id_sede;
+
+                    const la_sede = await getSedeByID(producto.id_sede);
+                    const el_emplazamiento = await getEmplazamientoByID(producto.id_emplazamiento);
+                    const el_usuario = await getUsuarioByIdIdEmplazamiento(el_emplazamiento.id, producto.id_usuario);
+                    if (producto.id_estado == 0 || producto.id_estado == '' || producto.id_estado == null || producto.id_estado == 'null') {
+                        setSelectedEstado(0);
+                    } else {
+                        const el_estado = await getEstadoByID(producto.id_estado);
+                        setSelectedEstado(el_estado.id);
+                        handleEstadoChange(el_estado.id);
+                    }
+                    if (producto.id_clasificacion == 0 || producto.id_clasificacion == '' || producto.id_clasificacion == null || producto.id_clasificacion == 'null') {
+                        setSelectedClasificacion(0);
+                    } else {
+                        const la_clasificacion = await getClasificacionByID(producto.id_clasificacion);
+                        setSelectedClasificacion(la_clasificacion.id);
+                        handleClasificacionChange(la_clasificacion.id);
+                    }
+
+                    setSelectedSede(la_sede.id);
+                    handleSedeChange(la_sede.id);
+                    setSelectedEmplazamiento(el_emplazamiento.id);
+                    handleEmplazamientoChange(el_emplazamiento.id);
+                    setSelectedUsuario(el_usuario.id_remoto);
+                    handleUsuarioChange(el_usuario.id_remoto);
+
+                    setId(producto.id);
+                    setCuenta(producto.cuenta);
+                    setCodigoAF(producto.codigo_af);
+                    setCodigoFisico(producto.codigo_fisico);
+                    setDescripcion(producto.descripcion);
+                    setMarca(producto.marca);
+                    setModelo(producto.modelo);
+                    setSerie(producto.serie);
+                    setMedida(producto.medida);
+                    setUnidad(producto.unidad);
+                    setCantidad(producto.cantidad);
+                    setColor(producto.color);
+                    setDetalles(producto.detalles);
+                    setObservaciones(producto.observaciones);
+                    setFoto(producto.foto);
+                } else {
+                    Alert.alert(
+                        'Alerta',
+                        'Producto no encontrado.',
+                        [
+                            {
+                                text: 'OK',
+                                onPress: () => console.log('OK Pressed'),
+                            },
+                        ],
+                        { cancelable: false }
+                    );
+                }
+            }
+            //setLoading(false);
+        } catch (error) {
+            console.error('Error al obtener opciones desde la API:', error);
+        }
+    }
+    async function fetchLocalUsuarios(id_emplazamiento) {
+        const storedUsuarios = await getAllUsuarios();//await AsyncStorage.getItem('usuarios');
+        if (storedUsuarios) {
+            storedUsuarios.unshift({ id: 0, nombres: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
+            setUsuarios(storedUsuarios.filter(item => item.id_emplazamiento == id_emplazamiento));
+        }
+    }
+    const fetchUsuariosFromAPI = async (id_emplazamiento) => {
+        try {
+            const storedUsuarios = await getAllUsuarios();
+            const check = storedUsuarios.filter(item => item.id == 0 && item.id_emplazamiento == id_emplazamiento);
+            if (check.length == 0) {
+                storedUsuarios.unshift({ id: 0, nombres: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
+            }
+            setUsuarios(storedUsuarios.filter(item => item.id_emplazamiento == id_emplazamiento));
+        } catch (error) {
+            console.error('Error al obtener usuarios desde la API:', error);
+        }
+    };
     const fetchEmplazamientosFromAPI = async (id_sede) => {
         try {
-            const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_emplazamientos');
-            const data = await response.json();
-            data.unshift({ id: 0, emplazamiento: "TODAS", id_sede: id_sede });
-            await AsyncStorage.setItem('emplazamientos', JSON.stringify(data));
-
-            setEmplazamientos(data.filter(item => item.id_sede == id_sede));
+            const storedEmplazamientos = await getAllEmplazamientos();
+            const check = storedEmplazamientos.filter(item => item.id == 0 && item.id_sede == id_sede);
+            if (check.length == 0) {
+                storedEmplazamientos.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
+            }
+            setEmplazamientos(storedEmplazamientos.filter(item => item.id_sede == id_sede));
         } catch (error) {
             console.error('Error al obtener emplazamientos desde la API:', error);
-            const storedEmplazamientos = await AsyncStorage.getItem('emplazamientos');
-            if (storedEmplazamientos) {
-
-                const parsedEmplazamientos = JSON.parse(storedEmplazamientos);
-                parsedEmplazamientos.unshift({ id: 0, emplazamiento: "TODAS", id_sede: id_sede });
-                setEmplazamientos(parsedEmplazamientos.filter(item => item.id_sede == id_sede));
-            }
         }
     };
 
     async function fetchLocalEmplazamientosFromAPI(id_sede) {
-        const storedEmplazamientos = await AsyncStorage.getItem('emplazamientos');
-
+        const storedEmplazamientos = await getAllEmplazamientos();
         if (storedEmplazamientos) {
-            const parsedEmplazamientos = JSON.parse(storedEmplazamientos);
-            parsedEmplazamientos.unshift({ id: 0, emplazamiento: "TODAS", id_sede: id_sede });
-            setEmplazamientos(parsedEmplazamientos.filter(item => item.id_sede == id_sede));
+            storedEmplazamientos.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
+            setEmplazamientos(storedEmplazamientos.filter(item => item.id_sede == id_sede));
         }
     }
 
-    const handleOptionChange = (value) => {
-        setSelectedOption(value);
-        if (connectionState) {
-            fetchEmplazamientosFromAPI(value);
-        } else {
-            fetchLocalEmplazamientosFromAPI(value);
+    const handleSedeChange = (value) => {
+        console.log("Sede => " + value);
+
+        if (value > 0) {
+            console.log("ENTRO AKI A CAMBIAR LA SEDE");
+            setSelectedSede(value);
+            if (connectionState) {
+                fetchEmplazamientosFromAPI(value);
+            } else {
+                fetchLocalEmplazamientosFromAPI(value);
+            }
         }
     };
     const handleEmplazamientoChange = (value) => {
         setSelectedEmplazamiento(value);
+        if (value > 0) {
+            if (connectionState) {
+                fetchUsuariosFromAPI(value);
+            } else {
+                fetchLocalUsuarios(value);
+            }
+        } else {
+            setSelectedUsuario(0);
+        }
     }
     const handleEstadoChange = (value) => {
         setSelectedEstado(value);
@@ -317,11 +388,39 @@ export default (props) => {
     const handleUsuarioChange = (value) => {
         setSelectedUsuario(value);
     }
+    const handlePhotoCapture = async (photoUri) => {
+        try {
+            // Ensure the 'uploads' directory exists
+            const uploadsDir = FileSystem.documentDirectory + 'uploads/';
+            const dirInfo = await FileSystem.getInfoAsync(uploadsDir);
+
+            if (!dirInfo.exists) {
+                console.log("Creating uploads directory");
+                await FileSystem.makeDirectoryAsync(uploadsDir, { intermediates: true });
+            }
+            console.log("ID ====> " + id);
+            // Generate file name
+            const fileName = id + '.jpg';
+            const destinationPath = uploadsDir + fileName;
+
+            // Copy the file
+            await FileSystem.copyAsync({
+                from: photoUri,
+                to: destinationPath
+            });
+            console.log("Photo copied successfully to:", destinationPath);
+            return fileName;
+        } catch (error) {
+            console.error("Failed to capture image:", error);
+        }
+    };
     const takePicture = async () => {
         if (cameraRef) {
             const { status } = await Camera.requestCameraPermissionsAsync();
             if (status === 'granted') {
                 const photo = await cameraRef.takePictureAsync();
+                let nombre_foto = await handlePhotoCapture(photo.uri);
+                setFoto(nombre_foto);
                 setPhotoUri(photo.uri);
                 setShow(false);
             } else {
@@ -350,18 +449,76 @@ export default (props) => {
 
         return [year, month, day].join('-') + " " + [hora.padStart(2, "0"), minutos, segundos].join(':');
     }
+    const renamePhoto = async (oldFileName, newFileName) => {
+        try {
+            const uploadsDir = FileSystem.documentDirectory + 'uploads/';
+
+            // Define the full paths for the old and new file names
+            const oldFilePath = uploadsDir + oldFileName;
+            const newFilePath = uploadsDir + newFileName;
+
+            // Use moveAsync to rename (move) the file
+            await FileSystem.moveAsync({
+                from: oldFilePath,
+                to: newFilePath
+            });
+
+            console.log(`Photo renamed successfully from ${oldFileName} to ${newFileName}`);
+        } catch (error) {
+            console.error("Failed to rename the photo:", error);
+        }
+    };
     const uploadPhotoToServer = async () => {
         try {
             let fileName = null;
             if (photoUri) {
                 fileName = 'photo_' + Date.now() + '.jpg';
-                await FileSystem.copyAsync({
-                    from: photoUri,
-                    to: FileSystem.documentDirectory + 'uploads/' + fileName
-                });
+            }
+            if ((selectedClasificacion == 1 || selectedClasificacion == 3) && ((fileName == null && (foto == "" || foto == null || foto == "null")) || selectedSede == 0
+                || selectedEstado == 0
+                || selectedClasificacion == 0
+                || selectedUsuario == 0
+                || selectedEmplazamiento == 0 || selectedSede == ""
+                || selectedEstado == ""
+                || selectedClasificacion == ""
+                || selectedUsuario == ""
+                || selectedEmplazamiento == "")) {
+                Alert.alert(
+                    'Alerta',
+                    'Obligatorio: Foto, Sede, Emplazamiento, Estado, Clasificación, Usuario',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => console.log('OK Pressed'),
+                        },
+                    ],
+                    { cancelable: false }
+                );
+                return;
+            }
+            if (selectedClasificacion == 2 && fileName != null) {
+                Alert.alert(
+                    'Alerta',
+                    'Producto NO UBICADO: No debería de tener foto.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => console.log('OK Pressed'),
+                        },
+                    ],
+                    { cancelable: false }
+                );
+                return;
             }
 
+            const listaSedes = await getSedeByID(selectedSede); //sedes.filter(item => item.id == selectedSede);
+            const listaUsuario = await getUsuarioByIdIdEmplazamiento(selectedEmplazamiento, selectedUsuario); //usuarios.filter(item => item.id == selectedUsuario);
+            const listaEmplazamientos = await getEmplazamientoByID(selectedEmplazamiento); //emplazamientos.filter(item => item.id == selectedEmplazamiento);
+            const listaClasificacion = await getClasificacionByID(selectedClasificacion); //clasificacion.filter(item => item.id == selectedClasificacion);
+            const listaEstados = await getEstadoByID(selectedEstado); //estados.filter(item => item.id == selectedEstado);
+
             if (connectionState) {
+                console.log("SI HAY INTERNET");
                 const formData = new FormData();
                 if (photoUri) {
                     formData.append('photo', {
@@ -384,17 +541,47 @@ export default (props) => {
                 formData.append('color', color ? color : '');
                 formData.append('detalles', detalles ? detalles : '');
                 formData.append('observaciones', observaciones ? observaciones : '');
-                formData.append('cod_inventario', cod_inventario ? cod_inventario : '');
-                formData.append('id_sede', selectedOption);
+                formData.append('id_sede', selectedSede);
                 formData.append('id_estado', selectedEstado);
                 formData.append('id_clasificacion', selectedClasificacion);
                 formData.append('id_usuario', selectedUsuario);
                 formData.append('id_emplazamiento', selectedEmplazamiento);
                 formData.append('cantidad', cantidad);
+                formData.append('inventariador', inventariador);
                 formData.append('unidad', unidad);
                 let url = '';
                 if (id) {
                     url = 'https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=actualizar_inventario';
+                    await updateInventario([
+                        cuenta,
+                        selectedSede,
+                        codigo_af,
+                        null,
+                        null,
+                        codigo_fisico,
+                        descripcion,
+                        marca,
+                        modelo,
+                        serie,
+                        medida,
+                        color,
+                        detalles,
+                        observaciones,
+                        null,
+                        selectedUsuario,
+                        inventariador,
+                        selectedClasificacion,
+                        selectedEstado,
+                        inventariador,
+                        null,
+                        foto,
+                        null,
+                        selectedEmplazamiento,
+                        formatDate(Date.now()),
+                        cantidad,
+                        unidad,
+                        id
+                    ]);
                 } else {
                     url = 'https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=insertar_inventario';
                 }
@@ -407,6 +594,45 @@ export default (props) => {
                 });
 
                 const result = await response.json();
+                if (id) {
+
+                } else {
+                    await addInventario(
+                        [
+                            result.LID,
+                            cuenta,
+                            selectedSede,
+                            codigo_af,
+                            null,
+                            null,
+                            codigo_fisico,
+                            descripcion,
+                            marca,
+                            modelo,
+                            serie,
+                            medida,
+                            color,
+                            detalles,
+                            observaciones,
+                            null,
+                            inventariador,
+                            selectedClasificacion,
+                            selectedEstado,
+                            inventariador,
+                            formatDate(Date.now()),
+                            foto,
+                            selectedEmplazamiento,
+                            cantidad,
+                            unidad,
+                            listaSedes.sede,
+                            listaUsuario.nombres,
+                            listaEmplazamientos.emplazamiento,
+                            listaClasificacion.clasificacion,
+                            listaEstados.estado,
+                            null
+                        ]
+                    );
+                }
                 Alert.alert(
                     'Éxito',
                     'Guardado Correctamente',
@@ -420,187 +646,125 @@ export default (props) => {
                 );
                 console.log('Response from server:', result);
             } else {
+                console.log("NO INTERNET");
                 if (id) {
-                    const storedProductos = await AsyncStorage.getItem('productos');
-                    let productList = storedProductos ? JSON.parse(storedProductos) : [];
-                    const index = productList.findIndex(item => item.id === id);
-                    if (index !== -1) {
-                        // Actualizar el elemento específico en la lista
-                        const listaSedes = options.filter(item => item.id == selectedOption);
-                        const listaUsuario = usuarios.filter(item => item.id == selectedUsuario);
-                        const listaEmplazamientos = emplazamientos.filter(item => item.id == selectedEmplazamiento);
-                        const listaClasificacion = clasificacion.filter(item => item.id == selectedClasificacion);
-                        console.log(fileName);
-                        if (fileName == null) {
-                            console.log("ES NULO FOTO");
-                            productList[index] = {
-                                id: id ? id : '',
-                                cuenta: cuenta ? cuenta : '',
-                                codigo_af: codigo_af ? codigo_af : '',
-                                codigo_fisico: codigo_fisico ? codigo_fisico : '',
-                                descripcion: descripcion ? descripcion : '',
-                                marca: marca ? marca : '',
-                                modelo: modelo ? modelo : '',
-                                serie: serie ? serie : '',
-                                medida: medida ? medida : '',
-                                color: color ? color : '',
-                                detalles: detalles ? detalles : '',
-                                observaciones: observaciones ? observaciones : '',
-                                cod_inventario: cod_inventario ? cod_inventario : '',
-                                id_sede: selectedOption,
-                                id_estado: selectedEstado,
-                                id_clasificacion: selectedClasificacion,
-                                fecha_modificacion: formatDate(Date.now()),
-                                sede: listaSedes[0].sede,
-                                nombres: listaUsuario[0].nombres,
-                                id_usuario: selectedUsuario,
-                                id_emplazamiento: selectedEmplazamiento,
-                                emplazamiento: listaEmplazamientos[0].emplazamiento,
-                                foto: productList[index].foto,
-                                clasificacion: listaClasificacion[0].clasificacion,
-                                unidad: unidad ? unidad : '',
-                                cantidad: cantidad ? cantidad : '',
-                            };
-                        } else {
-                            console.log("NO ES NULO FOTO");
-                            productList[index] = {
-                                id: id ? id : '',
-                                cuenta: cuenta ? cuenta : '',
-                                codigo_af: codigo_af ? codigo_af : '',
-                                codigo_fisico: codigo_fisico ? codigo_fisico : '',
-                                descripcion: descripcion ? descripcion : '',
-                                marca: marca ? marca : '',
-                                modelo: modelo ? modelo : '',
-                                serie: serie ? serie : '',
-                                medida: medida ? medida : '',
-                                color: color ? color : '',
-                                detalles: detalles ? detalles : '',
-                                observaciones: observaciones ? observaciones : '',
-                                cod_inventario: cod_inventario ? cod_inventario : '',
-                                id_sede: selectedOption,
-                                id_estado: selectedEstado,
-                                id_clasificacion: selectedClasificacion,
-                                foto: fileName,
-                                fecha_modificacion: formatDate(Date.now()),
-                                sede: listaSedes[0].sede,
-                                nombres: listaUsuario[0].nombres,
-                                id_usuario: selectedUsuario,
-                                id_emplazamiento: selectedEmplazamiento,
-                                clasificacion: listaClasificacion[0].clasificacion,
-                                photo: {
-                                    uri: photoUri,
-                                    name: fileName,
-                                    type: 'image/jpeg',
-                                },
-                                emplazamiento: listaEmplazamientos[0].emplazamiento,
-                                unidad: unidad ? unidad : '',
-                                cantidad: cantidad ? cantidad : '',
-                            };
-                        }
-                        await AsyncStorage.setItem('productos', JSON.stringify(productList));
-                        Alert.alert(
-                            'Éxito',
-                            'Guardado Localmente',
-                            [
-                                {
-                                    text: 'OK',
-                                    onPress: () => console.log('OK Pressed'),
-                                },
-                            ],
-                            { cancelable: false }
-                        );
-                    } else {
-                        console.error('Elemento no encontrado en la lista');
-                        Alert.alert(
-                            'ERROR',
-                            'Elemento no encontrado en la lista',
-                            [
-                                {
-                                    text: 'OK',
-                                    onPress: () => console.log('OK Pressed'),
-                                },
-                            ],
-                            { cancelable: false }
-                        );
-                    }
+                    console.log("PODUCTO ENCONTRADO");
+                    await updateInventario([
+                        cuenta,
+                        selectedSede,
+                        codigo_af,
+                        null,
+                        null,
+                        codigo_fisico,
+                        descripcion,
+                        marca,
+                        modelo,
+                        serie,
+                        medida,
+                        color,
+                        detalles,
+                        observaciones,
+                        null,
+                        selectedUsuario,
+                        inventariador,
+                        selectedClasificacion,
+                        selectedEstado,
+                        inventariador,
+                        null,
+                        foto,
+                        null,
+                        selectedEmplazamiento,
+                        formatDate(Date.now()),
+                        cantidad,
+                        unidad,
+                        id
+                    ]);
+                    Alert.alert(
+                        'Éxito',
+                        'Guardado Localmente',
+                        [
+                            {
+                                text: 'OK',
+                                onPress: () => console.log('OK Pressed'),
+                            },
+                        ],
+                        { cancelable: false }
+                    );
                 } else {
-                    const listaSedes = options.filter(item => item.id == selectedOption);
-                    const listaUsuario = usuarios.filter(item => item.id == selectedUsuario);
-                    const listaEmplazamientos = emplazamientos.filter(item => item.id == selectedEmplazamiento);
-                    const listaClasificacion = clasificacion.filter(item => item.id == selectedClasificacion);
-                    const storedProductos = await AsyncStorage.getItem('productos');
-                    let productList = storedProductos ? JSON.parse(storedProductos) : [];
-                    if (photoUri) {
-                        productList.push(
-                            {
-                                id: id ? id : '-2',
-                                cuenta: cuenta ? cuenta : '',
-                                codigo_af: codigo_af ? codigo_af : '',
-                                codigo_fisico: codigo_fisico ? codigo_fisico : '',
-                                descripcion: descripcion ? descripcion : '',
-                                marca: marca ? marca : '',
-                                modelo: modelo ? modelo : '',
-                                serie: serie ? serie : '',
-                                medida: medida ? medida : '',
-                                color: color ? color : '',
-                                detalles: detalles ? detalles : '',
-                                observaciones: observaciones ? observaciones : '',
-                                cod_inventario: cod_inventario ? cod_inventario : '',
-                                id_sede: selectedOption,
-                                id_estado: selectedEstado,
-                                id_clasificacion: selectedClasificacion,
-                                foto: fileName,
-                                fecha_modificacion: formatDate(Date.now()),
-                                sede: listaSedes[0].sede,
-                                nombres: listaUsuario[0].nombres,
-                                id_usuario: selectedUsuario,
-                                id_emplazamiento: selectedEmplazamiento,
-                                emplazamiento: listaEmplazamientos[0].emplazamiento,
-                                clasificacion: listaClasificacion[0].clasificacion,
-                                id_local: 'id_' + Math.random().toString(16).slice(2),
-                                photo: {
-                                    uri: photoUri,
-                                    name: fileName,
-                                    type: 'image/jpeg',
-                                },
-                                unidad: unidad ? unidad : '',
-                                cantidad: cantidad ? cantidad : '',
-                            }
-                        );
-                    } else {
-                        productList.push(
-                            {
-                                id: id ? id : '-2',
-                                cuenta: cuenta ? cuenta : '',
-                                codigo_af: codigo_af ? codigo_af : '',
-                                codigo_fisico: codigo_fisico ? codigo_fisico : '',
-                                descripcion: descripcion ? descripcion : '',
-                                marca: marca ? marca : '',
-                                modelo: modelo ? modelo : '',
-                                serie: serie ? serie : '',
-                                medida: medida ? medida : '',
-                                color: color ? color : '',
-                                detalles: detalles ? detalles : '',
-                                observaciones: observaciones ? observaciones : '',
-                                cod_inventario: cod_inventario ? cod_inventario : '',
-                                id_sede: selectedOption,
-                                id_estado: selectedEstado,
-                                id_clasificacion: selectedClasificacion,
-                                foto: fileName,
-                                fecha_modificacion: formatDate(Date.now()),
-                                sede: listaSedes[0].sede,
-                                nombres: listaUsuario[0].nombres,
-                                id_usuario: selectedUsuario,
-                                id_emplazamiento: selectedEmplazamiento,
-                                emplazamiento: listaEmplazamientos[0].emplazamiento,
-                                clasificacion: listaClasificacion[0].clasificacion,
-                                id_local: 'id_' + Math.random().toString(16).slice(2),
-                                unidad: unidad ? unidad : '',
-                                cantidad: cantidad ? cantidad : '',
-                            }
-                        );
-                    }
-                    await AsyncStorage.setItem('productos', JSON.stringify(productList));
+                    console.log("SIN ID");
+                    const listaSedes = await getSedeByID(selectedSede);// sedes.filter(item => item.id == selectedSede);
+                    const listaUsuario = await getUsuarioByIdIdEmplazamiento(selectedEmplazamiento, selectedUsuario); //usuarios.filter(item => item.id == selectedUsuario);
+                    const listaEmplazamientos = await getEmplazamientoByID(selectedEmplazamiento);// emplazamientos.filter(item => item.id == selectedEmplazamiento);
+                    const listaClasificacion = await getClasificacionByID(selectedClasificacion);// clasificacion.filter(item => item.id == selectedClasificacion);
+                    console.log("si hay photouri");
+                    const LID = await addInventario(
+                        [
+                            null,
+                            cuenta,
+                            selectedSede,
+                            codigo_af,
+                            null,
+                            null,
+                            codigo_fisico,
+                            descripcion,
+                            marca,
+                            modelo,
+                            serie,
+                            medida,
+                            color,
+                            detalles,
+                            observaciones,
+                            null,
+                            inventariador,
+                            selectedClasificacion,
+                            selectedEstado,
+                            inventariador,
+                            formatDate(Date.now()),
+                            foto,
+                            selectedEmplazamiento,
+                            cantidad,
+                            unidad,
+                            listaSedes.sede,
+                            listaUsuario.nombres,
+                            listaEmplazamientos.emplazamiento,
+                            listaClasificacion.clasificacion,
+                            listaEstados.estado,
+                            formatDate(Date.now())
+                        ]);
+                    await renamePhoto(foto, LID + '.jpg');
+                    await updateInventario(
+                        [
+                            cuenta,
+                            selectedSede,
+                            codigo_af,
+                            null,
+                            null,
+                            codigo_fisico,
+                            descripcion,
+                            marca,
+                            modelo,
+                            serie,
+                            medida,
+                            color,
+                            detalles,
+                            observaciones,
+                            null,
+                            selectedUsuario,
+                            inventariador,
+                            selectedClasificacion,
+                            selectedEstado,
+                            inventariador,
+                            formatDate(Date.now()),
+                            LID + '.jpg',
+                            null,
+                            selectedEmplazamiento,
+                            formatDate(Date.now()),
+                            cantidad,
+                            unidad,
+                            LID
+                        ]
+                    );
+                    setProductos(productos);
                     Alert.alert(
                         'Éxito',
                         'Guardado Localmente',
@@ -615,6 +779,17 @@ export default (props) => {
                 }
             }
         } catch (error) {
+            Alert.alert(
+                'ERROR',
+                'Algo ha salido terriblemente mal',
+                [
+                    {
+                        text: 'OK',
+                        onPress: () => console.log('OK Pressed'),
+                    },
+                ],
+                { cancelable: false }
+            );
             console.error('Error uploading photo:', error);
         }
     };
@@ -630,7 +805,7 @@ export default (props) => {
                 <View style={styles.action}>
                     {show ?
                         <View style={[styles.action, { width: 200, height: 200 }]}>
-                            <Camera
+                            <CameraView
                                 ref={(ref) => {
                                     setCameraRef(ref);
                                 }}
@@ -685,11 +860,11 @@ export default (props) => {
                         <View style={styles.action2}>
                             <Text style={styles.label}>Sede:</Text>
                             <Picker
-                                selectedValue={selectedOption}
-                                onValueChange={handleOptionChange}
+                                selectedValue={selectedSede}
+                                onValueChange={handleSedeChange}
                                 style={styles.textInput}
                             >
-                                {options.map((option) => (
+                                {sedes.map((option) => (
                                     <Picker.Item style={{ fontSize: 12 }} key={option.id} label={option.sede} value={option.id} />
                                 ))}
                             </Picker>
@@ -753,8 +928,21 @@ export default (props) => {
                             />
                         </View>
                     </View>
+
                     <View style={styles.action}>
-                        <View style={styles.action3}>
+                        <View style={styles.action2}>
+                            <Text style={styles.label}>Estado:</Text>
+                            <Picker
+                                selectedValue={selectedEstado}
+                                onValueChange={handleEstadoChange}
+                                style={styles.textInput}
+                            >
+                                {estados.map((option) => (
+                                    <Picker.Item style={{ fontSize: 12 }} key={option.id} label={option.estado} value={option.id} />
+                                ))}
+                            </Picker>
+                        </View>
+                        <View style={styles.action2}>
                             <Text style={styles.label}>Responsable:</Text>
                             <Picker
                                 selectedValue={selectedUsuario}
@@ -762,11 +950,13 @@ export default (props) => {
                                 style={styles.textInput}
                             >
                                 {usuarios.map((usuario) => (
-                                    <Picker.Item style={{ fontSize: 12 }} key={usuario.id} label={usuario.nombres} value={usuario.id} />
+                                    <Picker.Item style={{ fontSize: 12 }} key={usuario.id_remoto} label={usuario.nombres} value={usuario.id_remoto} />
                                 ))}
                             </Picker>
                         </View>
                     </View>
+
+
 
                     <View style={styles.action}>
                         <View style={styles.action3}>
@@ -872,31 +1062,8 @@ export default (props) => {
                             />
                         </View>
                     </View>
-                    <View style={styles.action}>
-                        <View style={styles.action2}>
-                            <Text style={styles.label}>Estado:</Text>
-                            <Picker
-                                selectedValue={selectedEstado}
-                                onValueChange={handleEstadoChange}
-                                style={styles.textInput}
-                            >
-                                {estados.map((option) => (
-                                    <Picker.Item style={{ fontSize: 12 }} key={option.id} label={option.estado} value={option.id} />
-                                ))}
-                            </Picker>
-                        </View>
-                        <View style={styles.action2}>
-                            <Text style={styles.label}>Código Inventario:</Text>
-                            <TextInput
-                                placeholder="Código Inventario"
-                                placeholderTextColor="#B2BABB"
-                                style={styles.textInput}
-                                value={cod_inventario ? cod_inventario : ''}
-                                onChangeText={text => setCodInventario(text)}
-                            />
-                        </View>
-                    </View>
                 </ScrollView>
+                <LoadingModal visible={loading} />
             </View>
         </View>
     );
