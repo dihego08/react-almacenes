@@ -42,7 +42,7 @@ export default class Login extends Component {
 			alert("Required Field Is Missing!!!");
 		} else {
 			console.log(Password);
-			var APIURL = "https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=login";
+			var APIURL = "https://inventarios.site/servicios/servicios.php?parAccion=login";
 
 			try {
 				const formData = new FormData();

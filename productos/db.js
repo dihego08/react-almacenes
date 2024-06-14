@@ -3,51 +3,57 @@ import { useEffect } from 'react';
 
 const db = SQLite.openDatabaseSync('database.db');
 
-
+async function eliminarTablas() {
+    await db.execAsync(
+        //'CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);'
+        `DROP TABLE inventario;
+        DROP TABLE clasificacion;
+        DROP TABLE estados;
+        DROP TABLE sedes;
+        DROP TABLE emplazamiento;
+        DROP TABLE usuarios;`
+    );
+}
 async function crearInventario() {
     // Crea la tabla si no existe
     await db.execAsync(
         //'CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);'
-        `/*DROP TABLE inventario;
-        DROP TABLE clasificacion;
-DROP TABLE estados;
-DROP TABLE sedes;
-DROP TABLE emplazamiento;
-DROP TABLE usuarios;*/CREATE TABLE IF NOT EXISTS inventario (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    cuenta TEXT,
-                    id_sede TEXT,
-                    codigo_af TEXT,
-                    sap_padre TEXT,
-                    sap_comp TEXT,
-                    codigo_fisico TEXT,
-                    descripcion TEXT,
-                    marca TEXT,
-                    modelo TEXT,
-                    serie TEXT,
-                    medida TEXT,
-                    color TEXT,
-                    detalles TEXT,
-                    observaciones TEXT,
-                    otros TEXT,
-                    id_usuario TEXT,
-                    inventariador TEXT,
-                    id_clasificacion TEXT,
-                    id_estado TEXT,
-                    usuario_creacion TEXT,
-                    fecha_creacion TEXT,
-                    foto TEXT,
-                    cod_inventario TEXT,
-                    id_emplazamiento TEXT,
-                    fecha_modificacion TEXT,
-                    cantidad TEXT,
-                    unidad TEXT,
-                    sede TEXT,
-                    nombres TEXT,
-                    emplazamiento TEXT,
-                    clasificacion TEXT,
-                    estado TEXT
-                )`
+        `CREATE TABLE IF NOT EXISTS inventario (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cuenta TEXT,
+            id_sede TEXT,
+            codigo_af TEXT,
+            sap_padre TEXT,
+            sap_comp TEXT,
+            codigo_fisico TEXT,
+            descripcion TEXT,
+            marca TEXT,
+            modelo TEXT,
+            serie TEXT,
+            medida TEXT,
+            color TEXT,
+            detalles TEXT,
+            observaciones TEXT,
+            otros TEXT,
+            id_usuario TEXT,
+            inventariador TEXT,
+            id_clasificacion TEXT,
+            id_estado TEXT,
+            usuario_creacion TEXT,
+            fecha_creacion TEXT,
+            foto TEXT,
+            cod_inventario TEXT,
+            id_emplazamiento TEXT,
+            fecha_modificacion TEXT,
+            cantidad TEXT,
+            unidad TEXT,
+            sede TEXT,
+            nombres TEXT,
+            emplazamiento TEXT,
+            clasificacion TEXT,
+            estado TEXT,
+            nuevo TEXT
+        )`
     );
 }
 async function crearSedes() {
@@ -111,7 +117,9 @@ async function crearClasificacion() {
     );
 }
 async function addInventario(data) {
-    const result = await db.runAsync(`INSERT INTO inventario (id, cuenta,
+    const result = await db.runAsync(`INSERT INTO inventario (
+        id, 
+        cuenta,
         id_sede,
         codigo_af,
         sap_padre,
@@ -141,7 +149,7 @@ async function addInventario(data) {
         emplazamiento,
         clasificacion,
         estado,
-        fecha_modificacion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, data);
+        fecha_modificacion, nuevo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, data);
     console.log(result.lastInsertRowId, result.changes);
     return result.lastInsertRowId;
 };
@@ -198,8 +206,13 @@ async function getAllInventario() {
     console.log("Seleccion Inventario desde SQLite");
     return allRows;
 }
-async function getAllUsuarios(){
-    const allRows = await db.getAllAsync('SELECT * FROM usuarios');
+async function getAllUsuarios() {
+    const allRows = await db.getAllAsync('SELECT * FROM usuarios ORDER BY nombres ASC');
+    console.log("Seleccion Usuarios desde SQLite");
+    return allRows;
+}
+async function getAllDistinctUsuarios() {
+    const allRows = await db.getAllAsync('SELECT distinct id_remoto, nombres FROM usuarios ORDER BY nombres ASC');
     console.log("Seleccion Usuarios desde SQLite");
     return allRows;
 }
@@ -214,11 +227,10 @@ async function getSedeByID(id) {
 }
 async function getEstadoByID(id) {
     const firstRow = await db.getFirstAsync('SELECT * FROM estados WHERE id = ?', id);
-    console.log(firstRow);
     return firstRow;
 }
 async function getUsuarioByIdIdEmplazamiento(id_emplazamiento, id) {
-    const firstRow = await db.getFirstAsync('SELECT * FROM usuarios WHERE id_emplazamiento = ? AND id_remoto = ?', [id_emplazamiento, id]);
+    const firstRow = await db.getFirstAsync('SELECT distinct * FROM usuarios WHERE id_remoto = ?', [id]);
     return firstRow;
 }
 async function getClasificacionByID(id) {
@@ -233,19 +245,29 @@ async function getAllEmplazamientos() {
     const allRows = await db.getAllAsync('SELECT * FROM emplazamiento ORDER BY emplazamiento ASC');
     console.log("Seleccion Emplazamiento desde SQLite");
     return allRows;
-} 
+}
 async function getEmplazamientoByIdSede(id_sede) {
     const allRows = await db.getAllAsync('SELECT * FROM emplazamiento WHERE id_sede = ? ORDER BY emplazamiento ASC', id_sede);
     console.log("Seleccion Emplazamiento desde SQLite");
     return allRows;
 }
-async function getAllEstado(){
+async function getAllEstado() {
     const allRows = await db.getAllAsync('SELECT * FROM estados');
     console.log("Seleccion estados desde SQLite");
     return allRows;
 }
 async function getAllClasificacion() {
     const allRows = await db.getAllAsync('SELECT * FROM clasificacion');
+    console.log("Seleccion clasificacion desde SQLite");
+    return allRows;
+}
+async function getAllClasificacionNuevo() {
+    const allRows = await db.getAllAsync('SELECT * FROM clasificacion WHERE id IN (3);');
+    console.log("Seleccion clasificacion desde SQLite");
+    return allRows;
+}
+async function getAllClasificacionEditar() {
+    const allRows = await db.getAllAsync('SELECT * FROM clasificacion WHERE id IN (1, 2);');
     console.log("Seleccion clasificacion desde SQLite");
     return allRows;
 }
@@ -257,21 +279,48 @@ async function getInventarioByIdLocal(id_inventario) {
     const firstRow = await db.getFirstAsync('SELECT * FROM inventario WHERE id_local = ?;', [id_inventario]);
     return firstRow;
 }
-async function updateInventario(data){
-    const result = await db.runAsync(`UPDATE inventario SET cuenta=?,id_sede=?,codigo_af=?,sap_padre=?,sap_comp=?,codigo_fisico=?,descripcion=?,marca=?,modelo=?,serie=?,medida=?,color=?,detalles=?,observaciones=?,otros=?,id_usuario=?,inventariador=?,id_clasificacion=?,id_estado=?,usuario_creacion=?,fecha_creacion=?,foto=?,cod_inventario=?,id_emplazamiento=?,fecha_modificacion=?,cantidad=?,unidad=? WHERE id = ?`, data);
+async function updateInventario(data) {
+    const result = await db.runAsync(`UPDATE inventario SET cuenta=?,id_sede=?,codigo_af=?,sap_padre=?,sap_comp=?,codigo_fisico=?,descripcion=?,marca=?,modelo=?,serie=?,medida=?,color=?,detalles=?,observaciones=?,otros=?,id_usuario=?,inventariador=?,id_clasificacion=?,id_estado=?,usuario_creacion=?,fecha_creacion=?,foto=?,cod_inventario=?,id_emplazamiento=?,fecha_modificacion=?,cantidad=?,unidad=?, sede = ?,
+nombres = ?,
+emplazamiento = ?,
+clasificacion = ?,
+estado = ? WHERE id = ?`, data);
     console.log(result.lastInsertRowId, result.changes);
 }
-async function getAllInventarioFechaModificacion(){
+async function getAllInventarioFechaModificacion() {
     const allRows = await db.getAllAsync('SELECT * FROM inventario WHERE fecha_modificacion IS NOT NULL');
     console.log("Seleccion las fechas modificaciones desde SQLite");
     return allRows;
 }
-async function getAllInventarioByText(text){
+async function getAllInventarioByText(text) {
     const allRows = await db.getAllAsync(`SELECT * FROM inventario WHERE descripcion LIKE '%${text}%' OR codigo_af LIKE '%${text}%' OR codigo_fisico LIKE '%${text}%' OR modelo LIKE '%${text}%' OR serie LIKE '%${text}%'`);
-    //(descripcion LIKE text OR codigo_af LIKE text OR codigo_fisico LIKE text OR modelo LIKE text OR serie LIKE text && text.length >= 3
-    console.log(allRows);
+    return allRows;
+}
+async function getDataGrafico(s, e, u) {
+    let query = "SELECT COUNT(i.id) cant, c.clasificacion FROM inventario i LEFT JOIN clasificacion c ON c.id = i.id_clasificacion WHERE 1 = 1 ";
+
+    if (s == 0) {
+    } else {
+        query += ' AND i.id_sede = ' + s;
+    }
+
+    if (e == 0) {
+    } else {
+        query += ' AND i.id_emplazamiento = ' + e;
+    }
+    if (u == 0) {
+    } else {
+        query += ' AND i.id_usuario = ' + u;
+    }
+    query += ' GROUP BY c.clasificacion;';
+    const allRows = await db.getAllAsync(query);
+    console.log("Seleccion la data del grafico");
+    return allRows;
+}
+async function getAllCuentas() {
+    const allRows = await db.getAllAsync(`SELECT DISTINCT cuenta FROM inventario;`);
     return allRows;
 }
 export {
-    crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, getInventarioByIdLocal, updateInventario, getEmplazamientoByIdSede, getCountInventarioById, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento, getAllInventarioFechaModificacion, getAllInventarioByText
+    crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, getInventarioByIdLocal, updateInventario, getEmplazamientoByIdSede, getCountInventarioById, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento, getAllInventarioFechaModificacion, getAllInventarioByText, getAllDistinctUsuarios, eliminarTablas, getAllClasificacionNuevo, getAllClasificacionEditar, getDataGrafico, getAllCuentas
 };

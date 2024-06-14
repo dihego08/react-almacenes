@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { StyleSheet, View, Image, Pressable, Text } from "react-native";
+import { StyleSheet, View, Image, Pressable, Text, Alert } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default class m_propietario extends Component {
@@ -23,6 +23,26 @@ export default class m_propietario extends Component {
         }).catch((error) => {
             console.error('Error al obtener datos del usuario:', error);
         });
+    }
+    async logout() {
+        await AsyncStorage.removeItem('usuarioLogin');
+        this.props.navigation.replace("Home");
+        this.props.navigation.navigate('Home');
+    }
+    showConfirmationAlert() {
+        Alert.alert(
+            "Confirmación",
+            "¿Estás seguro de que deseas continuar?",
+            [
+                {
+                    text: "Cancelar",
+                    onPress: () => console.log("Acción cancelada"),
+                    style: "cancel"
+                },
+                { text: "Aceptar", onPress: () => this.logout() }
+            ],
+            { cancelable: false }
+        );
     }
     render() {
 
@@ -61,6 +81,25 @@ export default class m_propietario extends Component {
                                 return { opacity: pressed ? 0 : 1 }
                             }}>
                             <Image style={styles.imageboton} source={require('../assets/imgs/menu_reporte.png')} />
+                        </Pressable>
+                    </View>
+                    <View style={styles.menu}>
+                        <Pressable
+                            onPress={() => navigate('Sincronizar')}
+                            style={({ pressed }) => {
+                                return { opacity: pressed ? 0 : 1 }
+                            }}>
+                            <Image style={styles.imageboton} source={require('../assets/imgs/btn_iniciarruta.png')} />
+                        </Pressable>
+                    </View>
+
+                    <View style={styles.menu}>
+                        <Pressable
+                            onPress={() => this.showConfirmationAlert()}
+                            style={({ pressed }) => {
+                                return { opacity: pressed ? 0 : 1 }
+                            }}>
+                            <Image style={styles.imageboton} source={require('../assets/imgs/btn_terminarruta.png')} />
                         </Pressable>
                     </View>
                 </View>

@@ -1,23 +1,30 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, Alert, Button, Dimensions } from "react-native";
+import { StyleSheet, View, Text, Alert, Button, Dimensions, Pressable } from "react-native";
 import { PieChart } from 'react-native-chart-kit';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import NetInfo from '@react-native-community/netinfo';
 import { Picker } from '@react-native-picker/picker';
 const screenWidth = Dimensions.get('window').width;
+import { zip, unzip, unzipAssets, subscribe } from 'react-native-zip-archive';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import { downloadZipFile } from "./zipFunction";
+
+import {
+    addInventario, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, updateInventario, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento, getAllDistinctUsuarios, getAllClasificacionNuevo, getAllClasificacionEditar, getAllUsuarios, getAllInventario, getDataGrafico
+} from "./db";
 
 export default () => {
     const [pdfUrl, setPdfUrl] = useState(null);
-    const [options, setOptions] = useState([]);
+    const [options, setSedes] = useState([]);
     const [emplazamientos, setEmplazamientos] = useState([]);
-    const [selectedOption, setSelectedOption] = useState(null);
+    const [selectedSede, setSelectedSede] = useState(null);
     const [selectedEmplazamiento, setSelectedEmplazamiento] = useState(null);
     const [isVisible, setVisible] = useState(false);
-    const [connectionState, setConnectionState] = useState(null);
     const [filteredProductos, setFilteredProductos] = useState([]);
-    const [productos, setProductos] = useState([]);
     const [inventariador, setInventariador] = useState([]);
     const [selectedUsuario, setSelectedUsuario] = useState(null);
     const [isVisibleUsuarios, setVisibleUsuarios] = useState(false);
@@ -30,19 +37,7 @@ export default () => {
     }, []);
     const fetchDataGrafico = async (s, e, u) => {
         try {
-            const formData = new FormData();
-            formData.append('id_sede', s);
-            formData.append('id_emplazamiento', e);
-            formData.append('id_usuario', u);
-            console.log(formData);
-            const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=data_grafico', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-            const result = await response.json();
+            const result = await getDataGrafico(s, e, u);
             console.log(result);
             processData(result);
         } catch (error) {
@@ -66,10 +61,6 @@ export default () => {
         }));
         setData(processedData);
     };
-    const getRandomColor = () => {
-        // Genera un color aleatorio
-        return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
-    };
     async function verifyConnection() {
         AsyncStorage.getItem('usuarioLogin').then((storedData) => {
             const dataLogin = JSON.parse(storedData);
@@ -78,57 +69,21 @@ export default () => {
             console.error('Error al obtener datos del usuario:', error);
         });
 
-        NetInfo.addEventListener(state => {
-            setConnectionState(state.isConnected);
-            if (state.isConnected) {
-                fetchOptionsFromAPI();
-            } else {
-                fetchLocalOptionsFromAPI();
-            }
-            fetchData();
-        });
+        await fetchLocalOptionsFromAPI();
+        //await fetchData();
     }
-    const fetchData = async () => {
-        const storedProductos = await AsyncStorage.getItem('productos');
-        const parsedProductos = JSON.parse(storedProductos);
-        if (!parsedProductos) {
-            const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_inventario');
-            const data = await response.json();
-            setProductos(data);
-        } else {
-            setProductos(parsedProductos);
-        }
-    }
-    const fetchOptionsFromAPI = async () => {
-        try {
-            // Realizar la solicitud HTTP para obtener las opciones desde la API
-            const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_sedes');
-            const data = await response.json();
-            data.unshift({ id: 0, sede: "--SELECCIONE--" });
-            setOptions(data);
-            await AsyncStorage.setItem('sedes', JSON.stringify(data));
-        } catch (error) {
-            const storedOptions = await AsyncStorage.getItem('sedes');
-            if (storedOptions) {
-                storedOptions.unshift({ id: 0, sede: "--SELECCIONE--" });
-                setOptions(JSON.parse(storedOptions));
-            }
-            console.error('Error al obtener opciones desde la API:', error);
-        }
-    };
 
     async function fetchLocalOptionsFromAPI() {
-        const storedOptions = await AsyncStorage.getItem('sedes');
+        const storedOptions = await getAllSedes();//await AsyncStorage.getItem('sedes');
         if (storedOptions) {
-            const parsedOptions = JSON.parse(storedOptions);
-            parsedOptions.unshift({ id: 0, sede: "--SELECCIONE--" });
-            setOptions(parsedOptions);
+            storedOptions.unshift({ id: 0, sede: "--SELECCIONE--", codigo: '000', usuario_creacion: null, fecha_creacion: null });
+            setSedes(storedOptions);
         }
     }
     const generatePDF = async () => {
         let tabla = '';
         let aux = 1;
-        if (!selectedOption || !selectedEmplazamiento || !selectedUsuario) {
+        if (!selectedSede || !selectedEmplazamiento || !selectedUsuario) {
             Alert.alert(
                 'Alerta',
                 'Seleccionar al Sede, Emplazamiento y Usuario.',
@@ -162,14 +117,17 @@ export default () => {
             </tr>`;
             aux += 1;
         }
-        const listaSedes = options.filter(item => item.id == selectedOption);
-        const listaUsuario = usuarios.filter(item => item.id == selectedUsuario);
-
-        let nombreEmplazamiento = '';
-        if (selectedEmplazamiento) {
-            const listaEmplazamientos = emplazamientos.filter(item => item.id == selectedEmplazamiento);
-            nombreEmplazamiento = listaEmplazamientos[0].emplazamiento;
+        
+        const listaSedes = await getSedeByID(selectedSede);
+        let nombreUsuario = '';
+        if (selectedUsuario > 0) {
+            console.log(selectedEmplazamiento);
+            console.log(selectedUsuario);
+            const listaUsuario = await getUsuarioByIdIdEmplazamiento(selectedEmplazamiento, selectedUsuario);
+            console.log(listaUsuario);
+            nombreUsuario = listaUsuario.nombres;
         }
+        const listaEmplazamientos = await getEmplazamientoByID(selectedEmplazamiento);
 
         const htmlContent = `
         <html>
@@ -184,15 +142,15 @@ export default () => {
                 <table>
                     <tr>
                         <td>SEDE:</td>
-                        <td>${listaSedes[0].sede}</td>
+                        <td>${listaSedes.sede}</td>
                     </tr>
                     <tr>
                         <td>AMBIENTE:</td>
-                        <td>${nombreEmplazamiento}</td>
+                        <td>${listaEmplazamientos.emplazamiento}</td>
                     </tr>
                     <tr>
                         <td>RESPONSABLE:</td>
-                        <td>${listaUsuario[0].nombres}</td>
+                        <td>${nombreUsuario}</td>
                     </tr>
                 </table>
                 <table style="width: 100%; font-size: 9px;" border="1">
@@ -232,7 +190,7 @@ export default () => {
         try {
             const { uri } = await Print.printToFileAsync({
                 html: htmlContent,
-                name: 'Inventario ' + listaSedes[0].sede + '.pdf',
+                name: 'Inventario ' + listaSedes.sede + '.pdf',
                 orientation: Print.Orientation.landscape,
                 height: 595, width: 842,
                 margins: {
@@ -255,13 +213,9 @@ export default () => {
     };
     const handleOptionChange = (value) => {
         console.log("Sede => " + value);
-        setSelectedOption(value);
+        setSelectedSede(value);
         if (value > 0) {
-            if (connectionState) {
-                fetchEmplazamientosFromAPI(value);
-            } else {
-                fetchLocalEmplazamientosFromAPI(value);
-            }
+            fetchLocalEmplazamientosFromAPI(value);
             fetchDataGrafico(value, 0, 0);
             setVisible(true);
         } else {
@@ -271,99 +225,68 @@ export default () => {
             setSelectedEmplazamiento(0);
         }
     };
-    async function fetchLocalUsuarios(id_emplazamiento) {
-        const storedUsuarios = await AsyncStorage.getItem('usuarios');
+    const fetchLocalUsuarios = async (id_emplazamiento) => {
+        const storedUsuarios = await getAllUsuarios();
         if (storedUsuarios) {
-            const parsedUsuarios = JSON.parse(storedUsuarios);
-            parsedUsuarios.unshift({ id: 0, nombres: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
-            setUsuarios(parsedUsuarios.filter(item => item.id_emplazamiento == id_emplazamiento));
-        }
-    };
-    const fetchUsuariosFromAPI = async (id_emplazamiento) => {
-        try {
-            console.log(id_emplazamiento);
-            // Realizar la solicitud HTTP para obtener las opciones desde la API
-            const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_usuarios_emplazamiento');
-            const data = await response.json();
-            const dataFiltered = data.filter(item => item.id_emplazamiento == id_emplazamiento);
-            dataFiltered.unshift({ id: 0, nombres: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
-            console.log(dataFiltered);
-            setUsuarios(dataFiltered);
-            await AsyncStorage.setItem('usuarios', JSON.stringify(data));
-        } catch (error) {
-            console.error('Error al obtener usuarios desde la API:', error);
-            const storedUsuarios = await AsyncStorage.getItem('usuarios');
-            if (storedUsuarios) {
-                storedUsuarios.unshift({ id: 0, sede: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
-                setUsuarios(JSON.parse(storedUsuarios).filter(item => item.id_emplazamiento == id_emplazamiento));
-            }
+            storedUsuarios.unshift({ id: 0, nombres: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
+            setUsuarios(storedUsuarios.filter(item => item.id_emplazamiento == id_emplazamiento));
         }
     };
     const handleEmplazamientoChange = (value) => {
         setSelectedEmplazamiento(value);
         console.log("Emplazamiento => " + value);
         if (value > 0) {
-            if (connectionState) {
-                fetchUsuariosFromAPI(value);
-            } else {
-                fetchLocalUsuarios(value);
-            }
+            fetchLocalUsuarios(value);
             setVisibleUsuarios(true);
-            fetchDataGrafico(selectedOption, value, 0);
+            fetchDataGrafico(selectedSede, value, 0);
         } else {
             setFilteredProductos([]);
             setVisibleUsuarios(false);
             setSelectedUsuario(0);
         }
     }
-    const handleUsuarioChange = (value) => {
+    const handleUsuarioChange = async (value) => {
         console.log("USuario => " + value);
         setSelectedUsuario(value);
         if (value > 0) {
-            const productosFiltrados = productos.filter(
-                producto => producto.id_usuario == value &&
-                    producto.id_sede == selectedOption &&
-                    producto.id_emplazamiento == selectedEmplazamiento
+            fetchDataGrafico(selectedSede, selectedEmplazamiento, value);
+            let productos = await getAllInventario();
+            const productosFiltrados1 = productos.filter(
+                producto => producto.id_sede == selectedSede
             );
-            setFilteredProductos(productosFiltrados);
-            fetchDataGrafico(selectedOption, selectedEmplazamiento, value);
+            const productosFiltrados2 = productosFiltrados1.filter(
+                producto => producto.id_emplazamiento == selectedEmplazamiento
+            );
+            const productosFiltrados3 = productosFiltrados2.filter(
+                producto => producto.id_usuario == value
+            );
+            setFilteredProductos(productosFiltrados3);
         } else {
             setFilteredProductos([]);
         }
     }
-    const fetchEmplazamientosFromAPI = async (id_sede) => {
-        try {
-            const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_emplazamientos');
-            const data = await response.json();
-            data.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
-            await AsyncStorage.setItem('emplazamientos', JSON.stringify(data));
-
-            setEmplazamientos(data.filter(item => item.id_sede == id_sede));
-        } catch (error) {
-            console.error('Error al obtener emplazamientos desde la API:', error);
-            const storedEmplazamientos = await AsyncStorage.getItem('emplazamientos');
-            if (storedEmplazamientos) {
-                const parsedEmplazamientos = JSON.parse(storedEmplazamientos);
-                parsedEmplazamientos.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
-                setEmplazamientos(parsedEmplazamientos.filter(item => item.id_sede == id_sede));
-            }
-        }
-    };
 
     async function fetchLocalEmplazamientosFromAPI(id_sede) {
-        const storedEmplazamientos = await AsyncStorage.getItem('emplazamientos');
+        const storedEmplazamientos = await getAllEmplazamientos();
         if (storedEmplazamientos) {
-            const parsedEmplazamientos = JSON.parse(storedEmplazamientos);
-            parsedEmplazamientos.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
-            setEmplazamientos(parsedEmplazamientos.filter(item => item.id_sede == id_sede));
+            storedEmplazamientos.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
+            setEmplazamientos(storedEmplazamientos.filter(item => item.id_sede == id_sede));
         }
     }
+    const handleDownloadZip = async () => {
+        try {
+            await downloadZipFile();
+            Alert.alert('¡Éxito!', 'El archivo zip se ha descargado correctamente.');
+        } catch (error) {
+            Alert.alert('Error', 'Hubo un problema al descargar el archivo zip.');
+        }
+    };
     return (
         <View style={styles.viewStyle}>
             <View style={styles.encabezado}>
                 <View style={styles.action}>
                     <Picker
-                        selectedValue={selectedOption}
+                        selectedValue={selectedSede}
                         onValueChange={handleOptionChange}
                         style={[styles.textInput2]}
                     >
@@ -390,7 +313,7 @@ export default () => {
                         style={styles.textInput}
                     >
                         {usuarios.map((usuario) => (
-                            <Picker.Item style={{ fontSize: 12 }} key={usuario.id} label={usuario.nombres} value={usuario.id} />
+                            <Picker.Item style={{ fontSize: 12 }} key={usuario.id_remoto} label={usuario.nombres} value={usuario.id_remoto} />
                         ))}
                     </Picker>
                 </View>
@@ -423,6 +346,9 @@ export default () => {
                 paddingLeft="10"
                 absolute
             />
+            {/*<Pressable style={[styles.button, { backgroundColor: '#4590dc' }]} onPress={handleDownloadZip} >
+                <MaterialIcons name='download' style={styles.iconos} /><Text style={styles.text}>Descargar Fotos</Text>
+            </Pressable>*/}
         </View>
     );
 }
@@ -600,4 +526,21 @@ const styles = StyleSheet.create({
     scrollView: {
         flex: 1,
     },
+    button: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 15,
+        paddingHorizontal: 32,
+        borderRadius: 4,
+        elevation: 3,
+        backgroundColor: 'black',
+        flexDirection: 'row'
+    },
+    text: {
+        fontSize: 20,
+        lineHeight: 25,
+        fontWeight: 'bold',
+        letterSpacing: 0.25,
+        color: 'white',
+    }
 });

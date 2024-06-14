@@ -22,7 +22,7 @@ export default (props) => {
         async function fetchLocationsFromAPI() {
 
             try {
-                var APIURL = "https://diegoaranibar.com/react/locations.php?accion=listar_ubicaciones_conductor";
+                var APIURL = "https://inventarios.site/react/locations.php?accion=listar_ubicaciones_conductor";
 
                 var headers = {
                     'Accept': 'application/json',

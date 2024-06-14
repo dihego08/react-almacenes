@@ -25,6 +25,7 @@ import p_reporteScreen from './propietario/p_reporte'
 import p_clientesScreen from './propietario/p_clientes'
 import crudproductosScreen from './frontendprop/crudproductos'
 import exportarReporteScreen from './productos/exportarReporte';
+import sincronizarScreen from './productos/sincronizar';
 import Home from './screens/Home';
 
 const AppNavigator = createStackNavigator({
@@ -106,6 +107,9 @@ const AppNavigator = createStackNavigator({
 	},
 	ExportarReporte: {
 		screen: exportarReporteScreen
+	},
+	Sincronizar:{
+		screen: sincronizarScreen
 	}
 }, {
 	initialRouteName: 'Home'

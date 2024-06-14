@@ -1,350 +1,94 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Image, Pressable, Text, ScrollView, TextInput, RefreshControl, Alert } from "react-native";
+import { StyleSheet, View, Image, Pressable, Text, ScrollView, TextInput, TouchableOpacity, Button } from "react-native";
 import { Picker } from '@react-native-picker/picker';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import LoadingModal from './LoadingModal';
-import { crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getEmplazamientoByIdSede, getInventarioById, getCountInventarioById, getAllInventarioFechaModificacion } from "./db";
+import { withNavigationFocus } from 'react-navigation';
+import ImageViewer from "./ImageViewer";
+import { crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getEmplazamientoByIdSede, getInventarioById, getCountInventarioById, getAllInventarioFechaModificacion, getAllClasificacion, getAllInventarioByText, getAllCuentas } from "./db";
 
-export default (props) => {
-    const [productos, setProductos] = useState([]);
+const ScreeInventario = ({ navigation, isFocused }) => {
     const [options, setSedes] = useState([]);
+    const [clasificacion, setClasificacion] = useState([]);
+    const [cuentas, setCuentas] = useState([]);
     const [emplazamientos, setEmplazamientos] = useState([]);
     const [usuarios, setUsuarios] = useState([]);
     const [selectedSede, setSelectedSede] = useState(null);
     const [selectedEmplazamiento, setSelectedEmplazamiento] = useState(null);
     const [selectedUsuario, setSelectedUsuario] = useState(null);
+    const [selectedClasificacion, setSelectedClasificacion] = useState(null);
+    const [selectedCuenta, setSelectedCuenta] = useState(null);
     const [filteredProductos, setFilteredProductos] = useState([]);
-    const [connectionState, setConnectionState] = useState(null);
     const [isVisible, setVisible] = useState(false);
     const [isVisibleUsuarios, setVisibleUsuarios] = useState(false);
-    const [isRefreshing, setIsRefreshing] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
+    const [selectedImageUri, setSelectedImageUri] = useState(null);
+    const [filteredProductosAnt, setFilteredProductosAnt] = useState(null);
+    const [textoFiltro, setTextoFiltro] = useState(null);
 
     useEffect(() => {
-        verifyConnection();
-    }, []);
+        if (isFocused) {
+            fetchLocalSedes();
+            fetchLocalClasificacion();
+        }
+    }, [isFocused]);
     async function verifyConnection() {
-        crearInventario();
-        crearSedes();
-        crearEmplazamiento();
-        crearUsuario();
-        crearEstado();
-        crearClasificacion();
         NetInfo.addEventListener(state => {
-            //state.isConnected
-            setConnectionState(state.isConnected);
-            if (state.isConnected) {
-                fetchSedesFromAPI();
-                fetchInventarioFromAPI();
-            } else {
-                fetchLocalSedes();
-                fetchLocalInventario();
-            }
+            fetchLocalSedes();
+            fetchLocalClasificacion();
         });
     }
-    async function fetchLocalInventario() {
-        console.log("Sin internet");
-        await AsyncStorage.setItem('estadoConexionAnterior', '0');
-
-        let productos = await getAllInventario();
-        setProductos(productos);
-    }
-    const fetchUsuariosFromAPI = async (id_emplazamiento) => {
-        try {
-            const storedUsuarios = await getAllUsuarios();//await AsyncStorage.getItem('usuarios');
-            //const parsedUsuarios = JSON.parse(storedUsuarios);
-            if (storedUsuarios && storedUsuarios.length > 0) {
-                const check = storedUsuarios.filter(item => item.id == 0 && item.id_emplazamiento == id_emplazamiento);
-                if (check.length == 0) {
-                    storedUsuarios.unshift({ id: 0, nombres: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
-                }
-                const usuariosFiltrados = storedUsuarios.filter(item => item.id_emplazamiento == id_emplazamiento);
-                setUsuarios(usuariosFiltrados);
-            } else {
-                // Realizar la solicitud HTTP para obtener las opciones desde la API
-                const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_usuarios_emplazamiento');
-                const data = await response.json();
-                const dataFiltered = data.filter(item => item.id_emplazamiento == id_emplazamiento);
-
-                let flag = 0;
-                if (data.length > await getCountUsuarios()) {
-                    flag = 1;
-                }
-                for (const usuario of data) {
-                    if (flag == 1) {
-                        await addUsuario(
-                            [
-                                usuario.id,
-                                null,
-                                usuario.nombres,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                usuario.id_emplazamiento
-                            ]);
-                    }
-                }
-
-                const storedUsuarios = await getAllUsuarios();
-                dataFiltered.unshift({ id: 0, nombres: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
-                setUsuarios(storedUsuarios.filter(item => item.id_emplazamiento == id_emplazamiento));
-
-            }
-        } catch (error) {
-            console.error('Error al obtener usuarios desde la API:', error);
-        }
+    const handleImagePress = (uri) => {
+        setSelectedImageUri(uri);
+        setIsImageViewerVisible(true);
     };
     async function fetchLocalUsuarios(id_emplazamiento) {
-        //const storedUsuarios = await AsyncStorage.getItem('usuarios');
         const storedUsuarios = await getAllUsuarios();
         if (storedUsuarios) {
-            //const parsedUsuarios = JSON.parse(storedUsuarios);
-            storedUsuarios.unshift({ id: 0, nombres: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
+            storedUsuarios.unshift({ id: 0, nombres: "--USUARIOS--", id_emplazamiento: id_emplazamiento });
             setUsuarios(storedUsuarios.filter(item => item.id_emplazamiento == id_emplazamiento));
         }
     }
-    async function fetchInventarioFromAPI() {
-        setLoading(true);
-        const estadoConexionAnterior = await AsyncStorage.getItem('estadoConexionAnterior');
-        await AsyncStorage.setItem('estadoConexionAnterior', '1');
-        var inventarios = [];
-        const directoryInfo = await FileSystem.getInfoAsync(FileSystem.documentDirectory + 'uploads');
-        if (!directoryInfo.exists) {
-            await FileSystem.makeDirectoryAsync(FileSystem.documentDirectory + 'uploads', { intermediates: true });
-        }
-        try {
-            const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_inventario');
-            const data = await response.json();
-            inventarios = data;
-            let flag = 0;
-            if (data.length >= await getCountInventario()) {
-                flag = 1;
-            }
-            setProductos(inventarios);
-            for (const inventario of inventarios) {
-                const fotoExists = await checkFileExists(inventario.foto);
-                if (!fotoExists) {
-                    await downloadImage(inventario.foto);
-                }
-                if (flag == 1) {
-                    if (await getCountInventarioById(inventario.id) == 0) {
-                        await addInventario(
-                            [
-                                inventario.id,
-                                inventario.cuenta,
-                                inventario.id_sede,
-                                inventario.codigo_af,
-                                inventario.sap_padre,
-                                inventario.sap_comp,
-                                inventario.codigo_fisico,
-                                inventario.descripcion,
-                                inventario.marca,
-                                inventario.modelo,
-                                inventario.serie,
-                                inventario.medida,
-                                inventario.color,
-                                inventario.detalles,
-                                inventario.observaciones,
-                                inventario.otros,
-                                inventario.id_usuario,
-                                inventario.inventariador,
-                                inventario.id_clasificacion,
-                                inventario.id_estado,
-                                inventario.usuario_creacion,
-                                inventario.fecha_creacion,
-                                inventario.foto,
-                                inventario.id_emplazamiento,
-                                inventario.cantidad,
-                                inventario.unidad,
-                                null
-                            ]
-                        );
-                    }
-                }
-            }
-
-            console.log("SI TRAJE");
-        } catch (error) {
-            console.error('Error al obtener datos de la API AKI:', error);
-            const storedData = await AsyncStorage.getItem('productos');
-            if (storedData) {
-                setProductos(JSON.parse(storedData));
-            }
-        }
-        try {
-            if (estadoConexionAnterior == '0') {
-                Alert.alert(
-                    'Mensaje',
-                    'Sincronizando Productos.',
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => console.log('OK Pressed'),
-                        },
-                    ],
-                    { cancelable: false }
-                );
-                //const storedProductos = await AsyncStorage.getItem('productos');
-                const parsedProductos = await getAllInventarioFechaModificacion(); //JSON.parse(storedProductos);
-                console.log(parsedProductos);
-                // Iterar sobre cada elemento del productList
-                for (const producto of parsedProductos) {
-                    if (!producto.fecha_modificacion == "") {
-                        const formData = new FormData(); // Crear un nuevo FormData para cada producto
-                        // Iterar sobre cada campo del producto y agregarlo al FormData
-                        for (const key in producto) {
-                            if (key === 'foto' && producto[key] != null) {
-                                // Si el campo es una imagen, agregarla al FormData con el nombre 'photo'
-                                formData.append('photo', {
-                                    uri: FileSystem.documentDirectory + 'uploads/' + producto[key],
-                                    name: producto[key],
-                                    type: 'image/jpeg',
-                                });
-                                formData.append(key, producto[key]);
-                            } else {
-                                // Si el campo no es una imagen, agregarlo al FormData con su clave correspondiente
-                                formData.append(key, producto[key]);
-                            }
-                        }
-                        fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=sincronizar_inventario', {
-                            method: 'POST',
-                            body: formData,
-                        })
-                            .then(response => response.json())
-                            .then(data => {
-                                console.log(data);
-                            })
-                            .catch(error => console.error(`Error al enviar elemento:`, error));
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Error al enviar los datos:', error);
-        }
-        await AsyncStorage.setItem('productos', JSON.stringify(inventarios));
-        setLoading(false);
-    }
-    const fetchSedesFromAPI = async () => {
-        try {
-            const parsedSedes = await getAllSedes();
-            //const parsedSedes = JSON.parse(storedOptions);
-            if (parsedSedes && parsedSedes.length > 0) {
-                console.log("HAY SEDES EN SQLITE");
-                const check = parsedSedes.filter(item => item.id == 0);
-                if (check.length == 0) {
-                    parsedSedes.unshift({ id: 0, sede: "--SELECCIONE--" });
-                }
-                setSedes(parsedSedes);
-            } else {
-                console.log("NO HAY SEDES EN SQLITE");
-                // Realizar la solicitud HTTP para obtener las opciones desde la API
-                const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_sedes');
-                const data = await response.json();
-                let flag = 0;
-                if (data.length > await getCountSedes()) {
-                    flag = 1;
-                    console.log("HAY MAS SEDES EN DATA QUE SQLITE");
-                }
-                for (const sede of data) {
-                    if (flag == 1) {
-                        await addSede(
-                            [
-                                sede.id,
-                                sede.codigo,
-                                sede.sede,
-                                sede.usuario_creacion,
-                                sede.fecha_creacion
-                            ]
-                        );
-                    }
-                }
-                data.unshift({ id: 0, sede: "--SELECCIONE--" });
-                setSedes(data);
-                //await AsyncStorage.setItem('sedes', JSON.stringify(data));
-            }
-        } catch (error) {
-            console.error('Error al obtener opciones desde la API:', error);
-        }
-    };
 
     async function fetchLocalSedes() {
         const storedOptions = await getAllSedes();
         if (storedOptions) {
-            //const parsedOptions = JSON.parse(storedOptions);
-            storedOptions.unshift({ id: 0, sede: "--SELECCIONE--" });
+            storedOptions.unshift({ id: 0, sede: "--SEDES--" });
             setSedes(storedOptions);
         }
     }
-    const handleRefresh = async () => {
-        setIsRefreshing(true);
-        try {
-            verifyConnection();
-            setIsRefreshing(false);
-        } catch (error) {
-            console.error('Error al actualizar los datos:', error);
-            setIsRefreshing(false);
+    async function fetchLocalClasificacion() {
+        const storedOptions = await getAllClasificacion();
+        if (storedOptions) {
+            storedOptions.unshift({ id: 0, clasificacion: "SIN PROCESAR" });
+            storedOptions.unshift({ id: -1, clasificacion: "--CLASIFICACIÓN--" });
+            setClasificacion(storedOptions);
         }
     }
-    const fetchEmplazamientosFromAPI = async (id_sede) => {
-        try {
-            const storedEmplazamientos = await getEmplazamientoByIdSede(id_sede);
-            if (storedEmplazamientos && storedEmplazamientos.length > 0) {
-                storedEmplazamientos.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
-                setEmplazamientos(storedEmplazamientos);
-            } else {
-                const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_emplazamientos');
-                const data = await response.json();
-
-                let flag = 0;
-                if (data.length > await getCountEmplazamiento()) {
-                    flag = 1;
-                }
-                for (const emplazamiento of data) {
-                    if (flag == 1) {
-                        await addEmplazamiento(
-                            [
-                                emplazamiento.id,
-                                emplazamiento.id_sede,
-                                emplazamiento.codigo,
-                                emplazamiento.emplazamiento,
-                                emplazamiento.usuario_creacion,
-                                emplazamiento.fecha_creacion
-                            ]
-                        );
-                    }
-                }
-
-                const storedEmplazamientos2 = await getEmplazamientoByIdSede(id_sede);
-                storedEmplazamientos2.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
-                setEmplazamientos(storedEmplazamientos2);
-            }
-        } catch (error) {
-            console.error('Error al obtener emplazamientos desde la API:', error);
-        }
-    };
-
     async function fetchLocalEmplazamientosFromAPI(id_sede) {
         const storedEmplazamientos = await getAllEmplazamientos();//await AsyncStorage.getItem('emplazamientos');
         if (storedEmplazamientos) {
-            storedEmplazamientos.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
+            storedEmplazamientos.unshift({ id: 0, emplazamiento: "--EMPLAZAMIENTO--", id_sede: id_sede });
             setEmplazamientos(storedEmplazamientos.filter(item => item.id_sede == id_sede));
         }
     }
-    const { navigate } = props.navigation;
+    async function fetchLocalCuentas() {
+        const storedCuentas = await getAllCuentas();
+        if (storedCuentas) {
+            storedCuentas.unshift({ id: 0, cuenta: "--CUENTA--" });
+            setCuentas(storedCuentas);
+        }
+    }
     const handleSedeChange = (value) => {
         setLoading(true);
         setSelectedSede(value);
         if (value > 0) {
-            if (connectionState) {
-                fetchEmplazamientosFromAPI(value);
-            } else {
-                fetchLocalEmplazamientosFromAPI(value);
-            }
+            fetchLocalEmplazamientosFromAPI(value);
+            fetchLocalCuentas();
             setVisible(true);
         } else {
             setFilteredProductos([]);
@@ -357,12 +101,9 @@ export default (props) => {
     const handleEmplazamientoChange = (value) => {
         setSelectedEmplazamiento(value);
         setLoading(true);
+        setSelectedCuenta(0);
         if (value > 0) {
-            if (connectionState) {
-                fetchUsuariosFromAPI(value);
-            } else {
-                fetchLocalUsuarios(value);
-            }
+            fetchLocalUsuarios(value);
             setVisibleUsuarios(true);
         } else {
             setFilteredProductos([]);
@@ -371,71 +112,157 @@ export default (props) => {
         }
         setLoading(false);
     }
-    const handleUsuarioChange = (value) => {
+    const handleCuentaChange = (value) => {
+        setSelectedCuenta(value);
         setLoading(true);
-        setSelectedUsuario(value);
+        setSelectedEmplazamiento(0);
         if (value > 0) {
-            const productosFiltrados1 = productos.filter(
-                producto => producto.id_sede == selectedSede
-            );
-            const productosFiltrados2 = productosFiltrados1.filter(
-                producto => producto.id_emplazamiento == selectedEmplazamiento
-            );
-            const productosFiltrados3 = productosFiltrados2.filter(
-                producto =>
-                    producto.id_usuario == value
-            );
-            setFilteredProductos(productosFiltrados3);
+            setVisibleUsuarios(true);
         } else {
-            setFilteredProductos([]);
+            setVisibleUsuarios(false);
+            setSelectedUsuario(0);
         }
         setLoading(false);
     }
-    const downloadImage = async (foto) => {
-        if (foto && foto != "null") {
-            const uri = 'https://diegoaranibar.com/almacen/servicios/uploads/' + foto;
-            const fileUri = FileSystem.documentDirectory + 'uploads/' + foto;
+    const handleClasificacionChange = async (value) => {
+        setSelectedClasificacion(value);
 
-            try {
-                const { uri: downloadedImageUri } = await FileSystem.downloadAsync(uri, fileUri);
-                console.log('Imagen descargada con éxito:', downloadedImageUri);
-            } catch (error) {
-                console.error('Error al descargar la imagen:', error);
-            }
-        }
-    };
-    const checkFileExists = async (foto) => {
-        const fileUri = FileSystem.documentDirectory + 'uploads/' + foto;
-        try {
-            const fileInfo = await FileSystem.getInfoAsync(fileUri);
-            return fileInfo.exists;
-        } catch (error) {
-            console.error('Error al verificar si el archivo existe:', error);
-            return false;
-        }
-    };
+        /*let productos = await getAllInventario();
+        const productosFiltrados1 = productos.filter(
+            producto => producto.id_sede == selectedSede
+        );
+        const productosFiltrados2 = productosFiltrados1.filter(
+            producto => producto.id_emplazamiento == selectedEmplazamiento
+        );
 
-    const filtrarProductos = async (text) => {
-        // Filtrar productos basados en el texto de búsqueda
-        if (text) {
-            if (productos.length == 0) {
-                console.log("Tomando productos desde Archivo");
-                setProductos(data);
-                await AsyncStorage.setItem('productos', JSON.stringify(data));
-            }
-            const productosFiltrados = productos.filter(producto =>
-                (producto.descripcion.toLowerCase().includes(text.toLowerCase()) || producto.codigo_af.toLowerCase().includes(text.toLowerCase()) || producto.codigo_fisico.toLowerCase().includes(text.toLowerCase()) || producto.modelo.toLowerCase().includes(text.toLowerCase()) || producto.serie.toLowerCase().includes(text.toLowerCase())) && text.length >= 3
+        if (value > 0) {
+            const productosFiltrados3 = productosFiltrados2.filter(
+                producto => producto.id_clasificacion == value
             );
-            /*if (text.length >= 3) {
-                const productosFiltrados = await getAllInventarioByText(text.toLowerCase());
-                setFilteredProductos(productosFiltrados);
-            }*/
-            setFilteredProductos(productosFiltrados);
+            setFilteredProductos(productosFiltrados3);
         } else {
-            setFilteredProductos([]);
+            const productosFiltrados3 = productosFiltrados2.filter(
+                producto => producto.id_clasificacion == null || producto.id_clasificacion == '' || producto.id_clasificacion == 0
+            );
+            setFilteredProductos(productosFiltrados3);
         }
+        setLoading(false);*/
     }
 
+    const filtrarProductos = async (text) => {
+        setLoading(true);
+        // Filtrar productos basados en el texto de búsqueda
+        if (text) {
+        } else {
+            if (filteredProductosAnt) {
+                setFilteredProductos(filteredProductosAnt);
+            } else {
+                setFilteredProductos([]);
+            }
+        }
+        setLoading(false);
+    }
+    const filtrarText = async () => {
+        setLoading(true);
+        let text = textoFiltro;
+        if (text) {
+            if (text.length >= 3) {
+
+                if (filteredProductosAnt) {
+                    const productosFiltrados = filteredProductosAnt.filter(producto => {
+                        const descripcion = producto.descripcion ? producto.descripcion.toLowerCase() : '';
+                        const codigo_af = producto.codigo_af ? producto.codigo_af.toLowerCase() : '';
+                        const codigo_fisico = producto.codigo_fisico ? producto.codigo_fisico.toLowerCase() : '';
+                        const modelo = producto.modelo ? producto.modelo.toLowerCase() : '';
+                        const serie = producto.serie ? producto.serie.toLowerCase() : '';
+                        const searchText = text.toLowerCase();
+
+                        return (
+                            (descripcion.includes(searchText) ||
+                                codigo_af.includes(searchText) ||
+                                codigo_fisico.includes(searchText) ||
+                                modelo.includes(searchText) ||
+                                serie.includes(searchText)) &&
+                            producto.descripcion != null
+                        );
+                    });
+                    setFilteredProductos(productosFiltrados);
+                } else {
+                    const productosFiltrados = await getAllInventarioByText(text.toLowerCase());
+                    setFilteredProductos(productosFiltrados);
+                }
+            }
+        }
+        setLoading(false);
+    }
+    const handleTextChange = async (text) => {
+        setLoading(true);
+        setTextoFiltro(text);
+        await filtrarProductos(text);
+        setLoading(false);
+    }
+    const filtrar = async () => {
+        setLoading(true);
+        if (selectedSede && selectedSede > 0) {
+            let productos = await getAllInventario();
+            const productosFiltrados1 = productos.filter(
+                producto => producto.id_sede == selectedSede
+            );
+
+            if (selectedCuenta && selectedCuenta > 0) {
+                const productosFiltrados2 = productosFiltrados1.filter(
+                    producto => producto.cuenta == selectedCuenta
+                );
+                if (selectedClasificacion >= 0 && selectedClasificacion != null /*selectedClasificacion && selectedClasificacion > -1*/) {
+
+                    if (selectedClasificacion == 0) {
+                        const productosFiltrados3 = productosFiltrados2.filter(
+                            producto => producto.id_clasificacion == 0 || producto.id_clasificacion == null
+                        );
+                        setFilteredProductos(productosFiltrados3);
+                        setFilteredProductosAnt(productosFiltrados3);
+                    } else {
+                        const productosFiltrados3 = productosFiltrados2.filter(
+                            producto => producto.id_clasificacion == selectedClasificacion
+                        );
+                        setFilteredProductos(productosFiltrados3);
+                        setFilteredProductosAnt(productosFiltrados3);
+                    }
+                } else {
+                    setFilteredProductos(productosFiltrados2);
+                    setFilteredProductosAnt(productosFiltrados2);
+                }
+            } else if (selectedEmplazamiento && selectedEmplazamiento > 0) {
+                const productosFiltrados2 = productosFiltrados1.filter(
+                    producto => producto.id_emplazamiento == selectedEmplazamiento
+                );
+                if (selectedClasificacion >= 0 && selectedClasificacion != null /*selectedClasificacion && selectedClasificacion > -1*/) {
+
+                    if (selectedClasificacion == 0) {
+                        const productosFiltrados3 = productosFiltrados2.filter(
+                            producto => producto.id_clasificacion == 0 || producto.id_clasificacion == null
+                        );
+                        setFilteredProductos(productosFiltrados3);
+                        setFilteredProductosAnt(productosFiltrados3);
+                    } else {
+                        const productosFiltrados3 = productosFiltrados2.filter(
+                            producto => producto.id_clasificacion == selectedClasificacion
+                        );
+                        setFilteredProductos(productosFiltrados3);
+                        setFilteredProductosAnt(productosFiltrados3);
+                    }
+                } else {
+                    setFilteredProductos(productosFiltrados2);
+                    setFilteredProductosAnt(productosFiltrados2);
+                }
+            } else {
+                setFilteredProductos(productosFiltrados1);
+                setFilteredProductosAnt(productosFiltrados1);
+            }
+        }
+
+        setLoading(false);
+    }
     return (
         <View style={styles.viewStyle}>
             <View style={styles.encabezado}>
@@ -454,59 +281,73 @@ export default (props) => {
                             ))}
                         </Picker>
                     </View>
-                    <View style={[styles.action, { display: isVisible ? 'flex' : 'none' }]} >
-                        <Picker
-                            selectedValue={selectedEmplazamiento}
-                            onValueChange={handleEmplazamientoChange}
-                            style={styles.textInput}
-                        >
-                            {emplazamientos.map((emplazamiento) => (
-                                <Picker.Item style={{ fontSize: 12 }} key={emplazamiento.id} label={emplazamiento.emplazamiento} value={emplazamiento.id} />
-                            ))}
-                        </Picker>
+                    <View style={[styles.fieldSet, { display: isVisible ? 'flex' : 'none' }]}>
+                        <View style={[styles.action]} >
+                            <Picker
+                                selectedValue={selectedEmplazamiento}
+                                onValueChange={handleEmplazamientoChange}
+                                style={styles.textInput}
+                            >
+                                {emplazamientos.map((emplazamiento) => (
+                                    <Picker.Item style={{ fontSize: 12 }} key={emplazamiento.id} label={emplazamiento.emplazamiento} value={emplazamiento.id} />
+                                ))}
+                            </Picker>
+                        </View>
+                        <View style={[styles.action]} >
+                            <Picker
+                                selectedValue={selectedCuenta}
+                                onValueChange={handleCuentaChange}
+                                style={styles.textInput}
+                            >
+                                {cuentas.map((cuenta) => (
+                                    <Picker.Item style={{ fontSize: 12 }} key={cuenta.cuenta} label={cuenta.cuenta} value={cuenta.cuenta} />
+                                ))}
+                            </Picker>
+                        </View>
                     </View>
-                    <View style={[styles.action, { display: isVisibleUsuarios ? 'flex' : 'none' }]}>
-                        <Picker
-                            selectedValue={selectedUsuario}
-                            onValueChange={handleUsuarioChange}
-                            style={styles.textInput}
-                        >
-                            {usuarios.map((usuario) => (
-                                <Picker.Item style={{ fontSize: 12 }} key={usuario.id_remoto} label={usuario.nombres} value={usuario.id_remoto} />
-                            ))}
-                        </Picker>
+                    <View style={[styles.fieldSet, { display: isVisibleUsuarios ? 'flex' : 'none' }]}>
+                        <View style={[styles.action]}>
+                            <Picker
+                                selectedValue={selectedClasificacion}
+                                onValueChange={handleClasificacionChange}
+                                style={styles.textInput}
+                            >
+                                {clasificacion.map((item) => (
+                                    <Picker.Item style={{ fontSize: 12 }} key={item.id} label={item.clasificacion} value={item.id} />
+                                ))}
+                            </Picker>
+                        </View>
+                    </View>
+                    <View style={[styles.action, { flexDirection: "row", textAlign: "center" }]}>
+                        <Button title="Filtrar" style={{ textAlign: "center" }} onPress={filtrar} disabled={loading} />
                     </View>
                 </View>
             </View>
 
             <View style={styles.container}>
                 <View style={styles.action}>
-                    <View style={styles.iconocirculobusca}>
-                        <MaterialIcons name='search' style={styles.iconosbusca} />
-                    </View>
                     <TextInput
                         placeholder="Digite para filtrar"
                         placeholderTextColor="#B2BABB"
                         style={styles.textInput}
-                        onChangeText={filtrarProductos} // Usa la función filtrarProductos directamente aquí
+                        onChangeText={handleTextChange}
                     />
                     <View style={styles.iconocirculobusca}>
-                        <MaterialIcons name='add' style={styles.iconosbusca} onPress={() => navigate('InformacionProducto', {
+                        <MaterialIcons name='search' style={styles.iconosbusca}
+                            onPress={filtrarText} disabled={loading} />
+                    </View>
+                    <View style={styles.iconocirculobusca}>
+                        <MaterialIcons name='add' style={styles.iconosbusca} onPress={() => navigation.navigate('InformacionProducto', {
                             id: -1
                         })} />
                     </View>
                 </View>
                 <ScrollView style={styles.scrollView}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={isRefreshing}
-                            onRefresh={handleRefresh}
-                        />
-                    }>
+                >
                     {filteredProductos.map((producto, index) => (
                         <Pressable
                             key={index}
-                            onPress={() => navigate('InformacionProducto', {
+                            onPress={() => navigation.navigate('InformacionProducto', {
                                 id: producto.id < -1 ? producto.id_local : producto.id
                             })}
                             style={({ pressed }) => {
@@ -515,7 +356,9 @@ export default (props) => {
                             <View style={styles.containerinfo}>
                                 <View style={styles.contenedorTexto}>
                                     <View style={styles.iconocirculo}>
-                                        <Image style={styles.imagenProducto} source={{ uri: FileSystem.documentDirectory + 'uploads/' + producto.foto }} />
+                                        <TouchableOpacity onPress={() => handleImagePress(FileSystem.documentDirectory + 'uploads/' + producto.foto)}>
+                                            <Image style={styles.imagenProducto} source={{ uri: FileSystem.documentDirectory + 'uploads/' + producto.foto + '?rand=' + Math.random() }} />
+                                        </TouchableOpacity>
                                     </View>
                                     <View style={styles.textoinfo}>
                                         <Text style={styles.texto1}>{producto.descripcion}</Text>
@@ -537,6 +380,11 @@ export default (props) => {
                     ))}
                 </ScrollView>
                 <LoadingModal visible={loading} />
+                <ImageViewer
+                    isVisible={isImageViewerVisible}
+                    onClose={() => setIsImageViewerVisible(false)}
+                    imageUri={selectedImageUri}
+                />
             </View>
         </View>
     );
@@ -545,6 +393,22 @@ const styles = StyleSheet.create({
     contenedorTexto: {
         flex: 1,
         flexDirection: 'row',
+    },
+    fieldSet: {
+        //margin: 10,
+        paddingHorizontal: 10,
+        paddingBottom: 10,
+        borderRadius: 5,
+        borderWidth: 1,
+        alignItems: 'center',
+        borderColor: '#000'
+    },
+    legend: {
+        position: 'absolute',
+        top: -10,
+        left: 10,
+        fontWeight: 'bold',
+        backgroundColor: '#FFFFFF'
     },
     textoDerecha: {
         textAlign: 'right',
@@ -708,3 +572,4 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 });
+export default withNavigationFocus(ScreeInventario);

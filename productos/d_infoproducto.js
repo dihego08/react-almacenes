@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Image, Pressable, Text, ScrollView, TextInput, Alert } from "react-native";
+import { StyleSheet, View, Image, Pressable, Text, ScrollView, TextInput, Alert, TouchableOpacity } from "react-native";
 import { Picker } from '@react-native-picker/picker';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Camera, CameraView } from 'expo-camera';
@@ -7,7 +7,16 @@ import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import LoadingModal from './LoadingModal';
-import { crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, getInventarioByIdLocal, updateInventario, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento } from "./db";
+import ImageViewer from "./ImageViewer";
+import * as ImageManipulator from 'expo-image-manipulator';
+import {
+    launchCameraAsync,
+    useCameraPermissions,
+    PermissionStatus,
+} from 'expo-image-picker';
+import {
+    addInventario, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, updateInventario, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento, getAllDistinctUsuarios, getAllClasificacionNuevo, getAllClasificacionEditar
+} from "./db";
 
 export default (props) => {
 
@@ -21,7 +30,8 @@ export default (props) => {
     const [selectedEstado, setSelectedEstado] = useState(null);
     const [selectedClasificacion, setSelectedClasificacion] = useState(null);
     const [selectedUsuario, setSelectedUsuario] = useState(null);
-
+    const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
+    const [selectedImageUri, setSelectedImageUri] = useState(null);
     const [cuenta, setCuenta] = useState(null);
     const [codigo_af, setCodigoAF] = useState(null);
     const [codigo_fisico, setCodigoFisico] = useState(null);
@@ -38,7 +48,6 @@ export default (props) => {
     const [observaciones, setObservaciones] = useState(null);
     const [id, setId] = useState(null);
     const [foto, setFoto] = useState(null);
-    const [connectionState, setConnectionState] = useState(null);
 
     const [photoUri, setPhotoUri] = useState(null);
     const [cameraRef, setCameraRef] = useState(null);
@@ -47,7 +56,8 @@ export default (props) => {
     const [loading, setLoading] = useState(false);
     const [inventariador, setInventariador] = useState(null);
 
-    const [productos, setProductos] = useState([]);
+    const [cameraPermissionInformation, requestPermission] =
+        useCameraPermissions();
 
     useEffect(() => {
         // Función para cargar las opciones desde la API
@@ -59,114 +69,61 @@ export default (props) => {
             }).catch((error) => {
                 console.error('Error al obtener datos del usuario:', error);
             });
-            //state.isConnected
-
-            setConnectionState(state.isConnected);
-            if (state.isConnected) {
-                fetchSedesFromAPI();
-                fetchEstado();
-                fetchClasificacion();
-                if (props.navigation.state.params.id != -1) {
-                    getData(true);
-                }
+            await fetchLocalSedes();
+            await fetchLocalEstado();
+            if (props.navigation.state.params.id != -1) {
+                await fetchLocalClasificacion(true);
+                await getData();
             } else {
-                fetchLocalSedes();
-                fetchLocalEstado();
-                fetchLocalClasificacion();
-                if (props.navigation.state.params.id != -1) {
-                    getData(false);
-                }
+                await fetchLocalClasificacion(false);
             }
 
             setLoading(false);
         });
         return () => unsubscribe();
     }, []);
-    const fetchClasificacion = async () => {
-        try {
-            const parsedClasificacion = await getAllClasificacion();
-            if (parsedClasificacion && parsedClasificacion.length > 0) {
-                const check = parsedClasificacion.filter(item => item.id == 0);
-                if (check.length == 0) {
-                    parsedClasificacion.unshift({ id: 0, clasificacion: "--SELECCIONE--" });
-                }
-                setClasificacion(parsedClasificacion);
-            } else {
-                const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_clasificacion');
-                const data = await response.json();
-
-                let flag = 0;
-                if (data.length > await getCountClasificacion()) {
-                    flag = 1;
-                }
-
-                for (const clasificacion of data) {
-                    if (flag == 1) {
-                        await addClasificacion(
-                            [
-                                clasificacion.id,
-                                clasificacion.clasificacion
-                            ]
-                        );
-                    }
-                }
-
-                data.unshift({ id: 0, clasificacion: "--SELECCIONE--" });
-                setClasificacion(data);
-            }
-        } catch (error) {
-            console.error('Error al obtener clasificaciones desde la API:', error);
+    const verifyPermission = async () => {
+        console.log('PermissionStatus.DENIED', PermissionStatus.DENIED);
+        if (cameraPermissionInformation.status === PermissionStatus.UNDETERMINED) {
+            const responseStatus = await requestPermission();
+            return responseStatus.granted;
         }
+        if (cameraPermissionInformation.status === PermissionStatus.DENIED) {
+            // Alert.alert(
+            //   'Insufficient Camera Permission!',
+            //   'This app need camera permission'
+            // );
+            const permissionResponse = await requestPermission();
+            console.log(
+                'permissionResponse.granted-----',
+                permissionResponse.granted
+            );
+            return permissionResponse;
+            // return false;
+        }
+        //setShow(true);
+        setPhotoUri(null);
+        setFoto(null);
+        return true;
     };
-
-    const fetchEstado = async () => {
-        try {
-            const parsedEstado = await getAllEstado();
-            //const parsedEstado = JSON.parse(storedOptions);
-            if (parsedEstado && parsedEstado.length > 0) {
-                const check = parsedEstado.filter(item => item.id == 0);
-                if (check.length == 0) {
-                    parsedEstado.unshift({ id: 0, estado: "--SELECCIONE--" });
-                }
-                setEstados(parsedEstado);
-            } else {
-                // Realizar la solicitud HTTP para obtener las opciones desde la API
-                const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=lista_estados');
-                const data = await response.json();
-
-                let flag = 0;
-                if (data.length > await getCountEstado()) {
-                    flag = 1;
-                }
-
-                for (const estado of data) {
-                    if (flag == 1) {
-                        await addEstado(
-                            [
-                                estado.id,
-                                estado.estado
-                            ]
-                        );
-                    }
-                }
-
-                data.unshift({ id: 0, estado: "--SELECCIONE--" });
-                setEstados(data);
-            }
-        } catch (error) {
-            console.error('Error al obtener estados desde la API:', error);
+    const imagePickerHandler = async () => {
+        const hasPermission = await verifyPermission();
+        if (!hasPermission) {
+            return;
         }
+        const image = await launchCameraAsync({
+            allowsEditing: false,
+            aspect: [16, 9],
+            quality: 0.5,
+        });
+        let nombre_foto = await handlePhotoCapture(image.assets[0].uri);
+        setFoto(nombre_foto);
+        setPhotoUri(image.assets[0].uri);
+        setShow(false);
     };
-    const fetchSedesFromAPI = async () => {
-        try {
-            const storedOptions = await getAllSedes();
-            if (storedOptions && storedOptions.length > 0) {
-                storedOptions.unshift({ id: 0, sede: "--SELECCIONE--", codigo: '000', usuario_creacion: null, fecha_creacion: null });
-                setSedes(storedOptions);
-            }
-        } catch (error) {
-            console.error('Error al obtener sedes desde la API:', error);
-        }
+    const handleImagePress = (uri) => {
+        setSelectedImageUri(uri);
+        setIsImageViewerVisible(true);
     };
     async function fetchLocalSedes() {
         const storedOptions = await getAllSedes();//await AsyncStorage.getItem('sedes');
@@ -182,168 +139,99 @@ export default (props) => {
             setEstados(storedEstado);
         }
     }
-    async function fetchLocalClasificacion() {
-        const storedClasificacion = await getAllClasificacion();//await AsyncStorage.getItem('clasificacion');
-        if (storedClasificacion) {
-            storedClasificacion.unshift({ id: 0, clasificacion: "--SELECCIONE--" });
-            setClasificacion(storedClasificacion);
+    async function fetchLocalClasificacion(type) {
+        if (type) {
+            const storedClasificacion = await getAllClasificacion();
+            if (storedClasificacion) {
+                storedClasificacion.unshift({ id: 0, clasificacion: "--SELECCIONE--" });
+                setClasificacion(storedClasificacion);
+            }
+        } else {
+            const storedClasificacion = await getAllClasificacionNuevo();
+            if (storedClasificacion) {
+                setClasificacion(storedClasificacion);
+                setSelectedClasificacion(storedClasificacion[0].id);
+            }
         }
+
     }
-    async function getData(e) {
+    async function getData() {
         try {
-            //setLoading(true);
-            if (e) {
-                console.log("SI ES e");
-                const formData = new FormData();
-                formData.append('id', props.navigation.state.params.id);
-                const response = await fetch('https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=editar_inventario', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                });
+            let producto = await getInventarioById(props.navigation.state.params.id);//parsedProductos.filter(producto => producto.id == props.navigation.state.params.id);
 
-                const result = await response.json();
-                const la_sede = await getSedeByID(result.id_sede);
-                const el_emplazamiento = await getEmplazamientoByID(result.id_emplazamiento);
+            if (producto) {
+                const la_sede = await getSedeByID(producto.id_sede);
+                const el_emplazamiento = await getEmplazamientoByID(producto.id_emplazamiento);
 
-                setSelectedSede(la_sede.id);
-                if (result.id_estado == 0 || result.id_estado == '' || result.id_estado == null || result.id_estado == 'null') {
+                let id_remoto_usuario = 0;
+                if (producto.id_usuario == null || producto.id_usuario == 0) {
+
+                } else {
+                    const el_usuario = await getUsuarioByIdIdEmplazamiento(el_emplazamiento.id, producto.id_usuario);
+                    id_remoto_usuario = el_usuario.id_remoto;
+                }
+
+                if (producto.id_estado == 0 || producto.id_estado == '' || producto.id_estado == null || producto.id_estado == 'null') {
                     setSelectedEstado(0);
                 } else {
-                    const el_estado = await getEstadoByID(result.id_estado);
+                    const el_estado = await getEstadoByID(producto.id_estado);
                     setSelectedEstado(el_estado.id);
                     handleEstadoChange(el_estado.id);
                 }
-                if (result.id_clasificacion == 0 || result.id_clasificacion == '' || result.id_clasificacion == null || result.id_clasificacion == 'null') {
+                if (producto.id_clasificacion == 0 || producto.id_clasificacion == '' || producto.id_clasificacion == null || producto.id_clasificacion == 'null') {
                     setSelectedClasificacion(0);
                 } else {
-                    const la_clasificacion = await getClasificacionByID(result.id_clasificacion);
+                    const la_clasificacion = await getClasificacionByID(producto.id_clasificacion);
                     setSelectedClasificacion(la_clasificacion.id);
                     handleClasificacionChange(la_clasificacion.id);
                 }
 
-                setId(result.id);
-                setCuenta(result.cuenta);
-                setCodigoAF(result.codigo_af);
-                setCodigoFisico(result.codigo_fisico);
-                setDescripcion(result.descripcion);
-                setMarca(result.marca);
-                setModelo(result.modelo);
-                setSerie(result.serie);
-                setMedida(result.medida);
-                setUnidad(result.unidad);
-                setCantidad(result.cantidad);
-                setColor(result.color);
-                setDetalles(result.detalles);
-                setObservaciones(result.observaciones);
-                setFoto(result.foto);
-
+                setSelectedSede(la_sede.id);
                 handleSedeChange(la_sede.id);
                 setSelectedEmplazamiento(el_emplazamiento.id);
                 handleEmplazamientoChange(el_emplazamiento.id);
-                setSelectedUsuario(result.id_usuario);
+                setSelectedUsuario(id_remoto_usuario);
+                handleUsuarioChange(id_remoto_usuario);
+
+                setId(producto.id);
+                setCuenta(producto.cuenta);
+                setCodigoAF(producto.codigo_af);
+                setCodigoFisico(producto.codigo_fisico);
+                setDescripcion(producto.descripcion);
+                setMarca(producto.marca);
+                setModelo(producto.modelo);
+                setSerie(producto.serie);
+                setMedida(producto.medida);
+                setUnidad(producto.unidad);
+                setCantidad(producto.cantidad);
+                setColor(producto.color);
+                setDetalles(producto.detalles);
+                setObservaciones(producto.observaciones);
+                setFoto(producto.foto);
             } else {
-                let producto = [];
-                if (props.navigation.state.params.id < -1) {
-                    producto = await getInventarioByIdLocal(props.navigation.state.params.id);//parsedProductos.filter(producto => producto.id_local == props.navigation.state.params.id);
-                } else {
-                    producto = await getInventarioById(props.navigation.state.params.id);//parsedProductos.filter(producto => producto.id == props.navigation.state.params.id);
-                }
-                if (producto) {
-                    const id_sede = producto.id_sede;
-
-                    const la_sede = await getSedeByID(producto.id_sede);
-                    const el_emplazamiento = await getEmplazamientoByID(producto.id_emplazamiento);
-                    const el_usuario = await getUsuarioByIdIdEmplazamiento(el_emplazamiento.id, producto.id_usuario);
-                    if (producto.id_estado == 0 || producto.id_estado == '' || producto.id_estado == null || producto.id_estado == 'null') {
-                        setSelectedEstado(0);
-                    } else {
-                        const el_estado = await getEstadoByID(producto.id_estado);
-                        setSelectedEstado(el_estado.id);
-                        handleEstadoChange(el_estado.id);
-                    }
-                    if (producto.id_clasificacion == 0 || producto.id_clasificacion == '' || producto.id_clasificacion == null || producto.id_clasificacion == 'null') {
-                        setSelectedClasificacion(0);
-                    } else {
-                        const la_clasificacion = await getClasificacionByID(producto.id_clasificacion);
-                        setSelectedClasificacion(la_clasificacion.id);
-                        handleClasificacionChange(la_clasificacion.id);
-                    }
-
-                    setSelectedSede(la_sede.id);
-                    handleSedeChange(la_sede.id);
-                    setSelectedEmplazamiento(el_emplazamiento.id);
-                    handleEmplazamientoChange(el_emplazamiento.id);
-                    setSelectedUsuario(el_usuario.id_remoto);
-                    handleUsuarioChange(el_usuario.id_remoto);
-
-                    setId(producto.id);
-                    setCuenta(producto.cuenta);
-                    setCodigoAF(producto.codigo_af);
-                    setCodigoFisico(producto.codigo_fisico);
-                    setDescripcion(producto.descripcion);
-                    setMarca(producto.marca);
-                    setModelo(producto.modelo);
-                    setSerie(producto.serie);
-                    setMedida(producto.medida);
-                    setUnidad(producto.unidad);
-                    setCantidad(producto.cantidad);
-                    setColor(producto.color);
-                    setDetalles(producto.detalles);
-                    setObservaciones(producto.observaciones);
-                    setFoto(producto.foto);
-                } else {
-                    Alert.alert(
-                        'Alerta',
-                        'Producto no encontrado.',
-                        [
-                            {
-                                text: 'OK',
-                                onPress: () => console.log('OK Pressed'),
-                            },
-                        ],
-                        { cancelable: false }
-                    );
-                }
+                Alert.alert(
+                    'Alerta',
+                    'Producto no encontrado.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => console.log('OK Pressed'),
+                        },
+                    ],
+                    { cancelable: false }
+                );
             }
-            //setLoading(false);
         } catch (error) {
             console.error('Error al obtener opciones desde la API:', error);
         }
     }
     async function fetchLocalUsuarios(id_emplazamiento) {
-        const storedUsuarios = await getAllUsuarios();//await AsyncStorage.getItem('usuarios');
+        const storedUsuarios = await getAllDistinctUsuarios();
         if (storedUsuarios) {
             storedUsuarios.unshift({ id: 0, nombres: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
-            setUsuarios(storedUsuarios.filter(item => item.id_emplazamiento == id_emplazamiento));
+            setUsuarios(storedUsuarios);
         }
     }
-    const fetchUsuariosFromAPI = async (id_emplazamiento) => {
-        try {
-            const storedUsuarios = await getAllUsuarios();
-            const check = storedUsuarios.filter(item => item.id == 0 && item.id_emplazamiento == id_emplazamiento);
-            if (check.length == 0) {
-                storedUsuarios.unshift({ id: 0, nombres: "--SELECCIONE--", id_emplazamiento: id_emplazamiento });
-            }
-            setUsuarios(storedUsuarios.filter(item => item.id_emplazamiento == id_emplazamiento));
-        } catch (error) {
-            console.error('Error al obtener usuarios desde la API:', error);
-        }
-    };
-    const fetchEmplazamientosFromAPI = async (id_sede) => {
-        try {
-            const storedEmplazamientos = await getAllEmplazamientos();
-            const check = storedEmplazamientos.filter(item => item.id == 0 && item.id_sede == id_sede);
-            if (check.length == 0) {
-                storedEmplazamientos.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
-            }
-            setEmplazamientos(storedEmplazamientos.filter(item => item.id_sede == id_sede));
-        } catch (error) {
-            console.error('Error al obtener emplazamientos desde la API:', error);
-        }
-    };
 
     async function fetchLocalEmplazamientosFromAPI(id_sede) {
         const storedEmplazamientos = await getAllEmplazamientos();
@@ -354,26 +242,16 @@ export default (props) => {
     }
 
     const handleSedeChange = (value) => {
-        console.log("Sede => " + value);
-
         if (value > 0) {
-            console.log("ENTRO AKI A CAMBIAR LA SEDE");
             setSelectedSede(value);
-            if (connectionState) {
-                fetchEmplazamientosFromAPI(value);
-            } else {
-                fetchLocalEmplazamientosFromAPI(value);
-            }
+            fetchLocalEmplazamientosFromAPI(value);
         }
     };
     const handleEmplazamientoChange = (value) => {
         setSelectedEmplazamiento(value);
         if (value > 0) {
-            if (connectionState) {
-                fetchUsuariosFromAPI(value);
-            } else {
-                fetchLocalUsuarios(value);
-            }
+            fetchLocalUsuarios(value);
+
         } else {
             setSelectedUsuario(0);
         }
@@ -395,17 +273,21 @@ export default (props) => {
             const dirInfo = await FileSystem.getInfoAsync(uploadsDir);
 
             if (!dirInfo.exists) {
-                console.log("Creating uploads directory");
                 await FileSystem.makeDirectoryAsync(uploadsDir, { intermediates: true });
             }
-            console.log("ID ====> " + id);
             // Generate file name
-            const fileName = id + '.jpg';
+            const fileName = Date.now() + 'I' + inventariador + '.jpg';
             const destinationPath = uploadsDir + fileName;
+
+            const manipResult = await ImageManipulator.manipulateAsync(
+                photoUri,
+                [{ resize: { width: 800 } }], // Resize the image to a width of 800px, maintaining aspect ratio
+                { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG } // Compress the image to 70% quality
+            );
 
             // Copy the file
             await FileSystem.copyAsync({
-                from: photoUri,
+                from: manipResult.uri,
                 to: destinationPath
             });
             console.log("Photo copied successfully to:", destinationPath);
@@ -430,10 +312,13 @@ export default (props) => {
     };
     const openCamera = async () => {
         setShow(true);
+        setPhotoUri(null);
+        setFoto(null);
     }
     const closeCamera = () => {
         setShow(false);
         setPhotoUri(null);
+        setFoto(null);
     }
     function formatDate(date) {
         var d = new Date(date),
@@ -474,6 +359,20 @@ export default (props) => {
             if (photoUri) {
                 fileName = 'photo_' + Date.now() + '.jpg';
             }
+            if (descripcion == "" || descripcion == null) {
+                Alert.alert(
+                    'Alerta',
+                    'Obligatorio: Descripción es necesario.',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => console.log('OK Pressed'),
+                        },
+                    ],
+                    { cancelable: false }
+                );
+                return;
+            }
             if ((selectedClasificacion == 1 || selectedClasificacion == 3) && ((fileName == null && (foto == "" || foto == null || foto == "null")) || selectedSede == 0
                 || selectedEstado == 0
                 || selectedClasificacion == 0
@@ -510,132 +409,10 @@ export default (props) => {
                 );
                 return;
             }
-
-            const listaSedes = await getSedeByID(selectedSede); //sedes.filter(item => item.id == selectedSede);
-            const listaUsuario = await getUsuarioByIdIdEmplazamiento(selectedEmplazamiento, selectedUsuario); //usuarios.filter(item => item.id == selectedUsuario);
-            const listaEmplazamientos = await getEmplazamientoByID(selectedEmplazamiento); //emplazamientos.filter(item => item.id == selectedEmplazamiento);
-            const listaClasificacion = await getClasificacionByID(selectedClasificacion); //clasificacion.filter(item => item.id == selectedClasificacion);
-            const listaEstados = await getEstadoByID(selectedEstado); //estados.filter(item => item.id == selectedEstado);
-
-            if (connectionState) {
-                console.log("SI HAY INTERNET");
-                const formData = new FormData();
-                if (photoUri) {
-                    formData.append('photo', {
-                        uri: photoUri,
-                        name: fileName,
-                        type: 'image/jpeg',
-                    });
-                    formData.append("nombreFoto", fileName);
-                }
-
-                formData.append('id', id ? id : '');
-                formData.append('cuenta', cuenta ? cuenta : '');
-                formData.append('codigo_af', codigo_af ? codigo_af : '');
-                formData.append('codigo_fisico', codigo_fisico ? codigo_fisico : '');
-                formData.append('descripcion', descripcion ? descripcion : '');
-                formData.append('marca', marca ? marca : '');
-                formData.append('modelo', modelo ? modelo : '');
-                formData.append('serie', serie ? serie : '');
-                formData.append('medida', medida ? medida : '');
-                formData.append('color', color ? color : '');
-                formData.append('detalles', detalles ? detalles : '');
-                formData.append('observaciones', observaciones ? observaciones : '');
-                formData.append('id_sede', selectedSede);
-                formData.append('id_estado', selectedEstado);
-                formData.append('id_clasificacion', selectedClasificacion);
-                formData.append('id_usuario', selectedUsuario);
-                formData.append('id_emplazamiento', selectedEmplazamiento);
-                formData.append('cantidad', cantidad);
-                formData.append('inventariador', inventariador);
-                formData.append('unidad', unidad);
-                let url = '';
-                if (id) {
-                    url = 'https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=actualizar_inventario';
-                    await updateInventario([
-                        cuenta,
-                        selectedSede,
-                        codigo_af,
-                        null,
-                        null,
-                        codigo_fisico,
-                        descripcion,
-                        marca,
-                        modelo,
-                        serie,
-                        medida,
-                        color,
-                        detalles,
-                        observaciones,
-                        null,
-                        selectedUsuario,
-                        inventariador,
-                        selectedClasificacion,
-                        selectedEstado,
-                        inventariador,
-                        null,
-                        foto,
-                        null,
-                        selectedEmplazamiento,
-                        formatDate(Date.now()),
-                        cantidad,
-                        unidad,
-                        id
-                    ]);
-                } else {
-                    url = 'https://diegoaranibar.com/almacen/servicios/servicios.php?parAccion=insertar_inventario';
-                }
-                const response = await fetch(url, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                });
-
-                const result = await response.json();
-                if (id) {
-
-                } else {
-                    await addInventario(
-                        [
-                            result.LID,
-                            cuenta,
-                            selectedSede,
-                            codigo_af,
-                            null,
-                            null,
-                            codigo_fisico,
-                            descripcion,
-                            marca,
-                            modelo,
-                            serie,
-                            medida,
-                            color,
-                            detalles,
-                            observaciones,
-                            null,
-                            inventariador,
-                            selectedClasificacion,
-                            selectedEstado,
-                            inventariador,
-                            formatDate(Date.now()),
-                            foto,
-                            selectedEmplazamiento,
-                            cantidad,
-                            unidad,
-                            listaSedes.sede,
-                            listaUsuario.nombres,
-                            listaEmplazamientos.emplazamiento,
-                            listaClasificacion.clasificacion,
-                            listaEstados.estado,
-                            null
-                        ]
-                    );
-                }
+            if (selectedClasificacion == 0) {
                 Alert.alert(
-                    'Éxito',
-                    'Guardado Correctamente',
+                    'Alerta',
+                    'No se ha seleccionado una Clasificación.',
                     [
                         {
                             text: 'OK',
@@ -644,12 +421,109 @@ export default (props) => {
                     ],
                     { cancelable: false }
                 );
-                console.log('Response from server:', result);
+                return;
+            }
+
+            const listaSedes = await getSedeByID(selectedSede);
+            let nombreUsuario = '';
+            let nombreEstado = '';
+            if (selectedUsuario > 0) {
+                const listaUsuario = await getUsuarioByIdIdEmplazamiento(selectedEmplazamiento, selectedUsuario);
+                nombreUsuario = listaUsuario.nombres;
+            }
+            if (selectedEstado > 0) {
+                const listaEstados = await getEstadoByID(selectedEstado);
+                nombreEstado = listaEstados.estado;
+            }
+            const listaEmplazamientos = await getEmplazamientoByID(selectedEmplazamiento);
+            const listaClasificacion = await getClasificacionByID(selectedClasificacion);
+
+            if (id) {
+                await updateInventario([
+                    cuenta,
+                    selectedSede,
+                    codigo_af,
+                    null,
+                    null,
+                    codigo_fisico,
+                    descripcion,
+                    marca,
+                    modelo,
+                    serie,
+                    medida,
+                    color,
+                    detalles,
+                    observaciones,
+                    null,
+                    selectedUsuario,
+                    inventariador,
+                    selectedClasificacion,
+                    selectedEstado,
+                    inventariador,
+                    null,
+                    foto,
+                    null,
+                    selectedEmplazamiento,
+                    formatDate(Date.now()),
+                    cantidad,
+                    unidad,
+                    listaSedes.sede,
+                    nombreUsuario,
+                    listaEmplazamientos.emplazamiento,
+                    listaClasificacion.clasificacion,
+                    nombreEstado,
+                    id
+                ]);
+                Alert.alert(
+                    'Éxito',
+                    'Guardado Localmente',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => console.log('OK Pressed'),
+                        },
+                    ],
+                    { cancelable: false }
+                );
             } else {
-                console.log("NO INTERNET");
-                if (id) {
-                    console.log("PODUCTO ENCONTRADO");
-                    await updateInventario([
+                const LID = await addInventario(
+                    [
+                        null,
+                        cuenta,
+                        selectedSede,
+                        codigo_af,
+                        null,
+                        null,
+                        codigo_fisico,
+                        descripcion,
+                        marca,
+                        modelo,
+                        serie,
+                        medida,
+                        color,
+                        detalles,
+                        observaciones,
+                        null,
+                        inventariador,
+                        selectedClasificacion,
+                        selectedEstado,
+                        inventariador,
+                        formatDate(Date.now()),
+                        foto,
+                        selectedEmplazamiento,
+                        cantidad,
+                        unidad,
+                        listaSedes.sede,
+                        nombreUsuario,
+                        listaEmplazamientos.emplazamiento,
+                        listaClasificacion.clasificacion,
+                        nombreEstado,
+                        formatDate(Date.now()),
+                        1
+                    ]);
+                /*await renamePhoto(foto, LID + '.jpg');
+                await updateInventario(
+                    [
                         cuenta,
                         selectedSede,
                         codigo_af,
@@ -670,114 +544,35 @@ export default (props) => {
                         selectedClasificacion,
                         selectedEstado,
                         inventariador,
-                        null,
-                        foto,
+                        formatDate(Date.now()),
+                        LID + '.jpg',
                         null,
                         selectedEmplazamiento,
                         formatDate(Date.now()),
                         cantidad,
                         unidad,
-                        id
-                    ]);
-                    Alert.alert(
-                        'Éxito',
-                        'Guardado Localmente',
-                        [
-                            {
-                                text: 'OK',
-                                onPress: () => console.log('OK Pressed'),
-                            },
-                        ],
-                        { cancelable: false }
-                    );
-                } else {
-                    console.log("SIN ID");
-                    const listaSedes = await getSedeByID(selectedSede);// sedes.filter(item => item.id == selectedSede);
-                    const listaUsuario = await getUsuarioByIdIdEmplazamiento(selectedEmplazamiento, selectedUsuario); //usuarios.filter(item => item.id == selectedUsuario);
-                    const listaEmplazamientos = await getEmplazamientoByID(selectedEmplazamiento);// emplazamientos.filter(item => item.id == selectedEmplazamiento);
-                    const listaClasificacion = await getClasificacionByID(selectedClasificacion);// clasificacion.filter(item => item.id == selectedClasificacion);
-                    console.log("si hay photouri");
-                    const LID = await addInventario(
-                        [
-                            null,
-                            cuenta,
-                            selectedSede,
-                            codigo_af,
-                            null,
-                            null,
-                            codigo_fisico,
-                            descripcion,
-                            marca,
-                            modelo,
-                            serie,
-                            medida,
-                            color,
-                            detalles,
-                            observaciones,
-                            null,
-                            inventariador,
-                            selectedClasificacion,
-                            selectedEstado,
-                            inventariador,
-                            formatDate(Date.now()),
-                            foto,
-                            selectedEmplazamiento,
-                            cantidad,
-                            unidad,
-                            listaSedes.sede,
-                            listaUsuario.nombres,
-                            listaEmplazamientos.emplazamiento,
-                            listaClasificacion.clasificacion,
-                            listaEstados.estado,
-                            formatDate(Date.now())
-                        ]);
-                    await renamePhoto(foto, LID + '.jpg');
-                    await updateInventario(
-                        [
-                            cuenta,
-                            selectedSede,
-                            codigo_af,
-                            null,
-                            null,
-                            codigo_fisico,
-                            descripcion,
-                            marca,
-                            modelo,
-                            serie,
-                            medida,
-                            color,
-                            detalles,
-                            observaciones,
-                            null,
-                            selectedUsuario,
-                            inventariador,
-                            selectedClasificacion,
-                            selectedEstado,
-                            inventariador,
-                            formatDate(Date.now()),
-                            LID + '.jpg',
-                            null,
-                            selectedEmplazamiento,
-                            formatDate(Date.now()),
-                            cantidad,
-                            unidad,
-                            LID
-                        ]
-                    );
-                    setProductos(productos);
-                    Alert.alert(
-                        'Éxito',
-                        'Guardado Localmente',
-                        [
-                            {
-                                text: 'OK',
-                                onPress: () => console.log('OK Pressed'),
-                            },
-                        ],
-                        { cancelable: false }
-                    );
-                }
+                        listaSedes.sede,
+                        nombreUsuario,
+                        listaEmplazamientos.emplazamiento,
+                        listaClasificacion.clasificacion,
+                        nombreEstado,
+                        LID
+                    ]
+                );*/
+                //setProductos(productos);
+                Alert.alert(
+                    'Éxito',
+                    'Guardado Localmente',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => console.log('OK Pressed'),
+                        },
+                    ],
+                    { cancelable: false }
+                );
             }
+            //}
         } catch (error) {
             Alert.alert(
                 'ERROR',
@@ -811,21 +606,24 @@ export default (props) => {
                                 }}
                                 style={styles.camera}
                                 ratio="4:3"
-                            />
+                            >
+                            </CameraView>
                             <View style={styles.iconocirculo}>
                                 <MaterialIcons name='image' style={styles.iconos} onPress={takePicture} />
                             </View>
                         </View>
                         :
                         foto && !photoUri ?
-                            <Image style={{ width: 200, height: 200 }} source={{ uri: FileSystem.documentDirectory + 'uploads/' + foto }} /> : ''
+                            <TouchableOpacity onPress={() => handleImagePress(FileSystem.documentDirectory + 'uploads/' + foto + '?rand=' + Math.random())}>
+                                <Image style={{ width: 200, height: 200 }} source={{ uri: FileSystem.documentDirectory + 'uploads/' + foto + '?rand=' + Math.random() }} />
+                            </TouchableOpacity> : ''
 
                     }
 
                     {photoUri && !show ? <Image source={{ uri: photoUri }} style={{ width: 200, height: 200 }} /> : ''}
                     {!show ?
                         <View style={styles.iconocirculo}>
-                            <MaterialIcons name='camera' style={styles.iconos} onPress={openCamera} />
+                            <MaterialIcons name='camera' style={styles.iconos} onPress={imagePickerHandler} />
                         </View> : ''
                     }
                     {show ?
@@ -845,6 +643,11 @@ export default (props) => {
                         </Pressable>
                     </View>
                 </View>
+                <ImageViewer
+                    isVisible={isImageViewerVisible}
+                    onClose={() => setIsImageViewerVisible(false)}
+                    imageUri={selectedImageUri}
+                />
                 <ScrollView style={styles.scrollView}>
                     <View style={styles.action}>
                         <View style={styles.action2}>
@@ -955,8 +758,6 @@ export default (props) => {
                             </Picker>
                         </View>
                     </View>
-
-
 
                     <View style={styles.action}>
                         <View style={styles.action3}>
