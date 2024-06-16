@@ -4,7 +4,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import * as FileSystem from 'expo-file-system';
 const screenWidth = Dimensions.get('window').width;
 import LoadingModal from './LoadingModal';
-import { crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getEmplazamientoByIdSede, getInventarioById, getCountInventarioById, getAllInventarioFechaModificacion, eliminarTablas } from "./db";
+import { crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getEmplazamientoByIdSede, getInventarioById, getCountInventarioById, getAllInventarioFechaModificacion, eliminarTablas, updateNuevo } from "./db";
 
 export default () => {
 
@@ -53,12 +53,6 @@ export default () => {
             await crearTablas();
             await eliminarTablas();
             await crearTablas();
-            /*await crearInventario();
-            await crearSedes();
-            await crearEmplazamiento();
-            await crearUsuario();
-            await crearEstado();
-            await crearClasificacion();*/
 
             await fetchUsuariosFromAPI();
             await fetchSedesFromAPI();
@@ -168,37 +162,36 @@ export default () => {
     };
     async function enviarModificaciones() {
         try {
-            //const storedProductos = await AsyncStorage.getItem('productos');
-            const parsedProductos = await getAllInventarioFechaModificacion(); //JSON.parse(storedProductos);
+            const parsedProductos = await getAllInventarioFechaModificacion();
+            console.log(parsedProductos);
             // Iterar sobre cada elemento del productList
             for (const producto of parsedProductos) {
-                if (!producto.fecha_modificacion == "") {
-                    const formData = new FormData(); // Crear un nuevo FormData para cada producto
-                    // Iterar sobre cada campo del producto y agregarlo al FormData
-                    for (const key in producto) {
-                        if (key === 'foto' && producto[key] != null) {
-                            // Si el campo es una imagen, agregarla al FormData con el nombre 'photo'
-                            formData.append('photo', {
-                                uri: FileSystem.documentDirectory + 'uploads/' + producto[key],
-                                name: producto[key],
-                                type: 'image/jpeg',
-                            });
-                            console.log(producto[key]);
-                            formData.append(key, producto[key]);
-                        } else {
-                            // Si el campo no es una imagen, agregarlo al FormData con su clave correspondiente
-                            formData.append(key, producto[key]);
-                        }
+                const formData = new FormData(); // Crear un nuevo FormData para cada producto
+                // Iterar sobre cada campo del producto y agregarlo al FormData
+                for (const key in producto) {
+                    if (key === 'foto' && producto[key] != null) {
+                        // Si el campo es una imagen, agregarla al FormData con el nombre 'photo'
+                        formData.append('photo', {
+                            uri: FileSystem.documentDirectory + 'uploads/' + producto[key],
+                            name: producto[key],
+                            type: 'image/jpeg',
+                        });
+                        console.log(producto[key]);
+                        formData.append(key, producto[key]);
+                    } else {
+                        // Si el campo no es una imagen, agregarlo al FormData con su clave correspondiente
+                        formData.append(key, producto[key]);
                     }
-                    await fetch('https://inventarios.site/servicios/servicios.php?parAccion=sincronizar_inventario', {
-                        method: 'POST',
-                        body: formData,
-                    }).then(response => response.text())
-                        .then(data => {
-                            console.log(data);
-                        })
-                        .catch(error => console.error(`Error al enviar elemento:`, error));
                 }
+                await fetch('https://inventarios.site/servicios/servicios.php?parAccion=sincronizar_inventario', {
+                    method: 'POST',
+                    body: formData,
+                }).then(response => response.text())
+                    .then(async data => {
+                        console.log(data);
+                        await updateNuevo(producto['id']);
+                    })
+                    .catch(error => console.error(`Error al enviar elemento:`, error));
             }
 
         } catch (error) {
@@ -259,6 +252,7 @@ export default () => {
                                 inventario.emplazamiento,
                                 inventario.clasificacion,
                                 inventario.estado,
+                                null,
                                 0
                             ]
                         );

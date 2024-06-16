@@ -12,6 +12,8 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import {
     launchCameraAsync,
     useCameraPermissions,
+    launchImageLibraryAsync,
+    useMediaLibraryPermissions,
     PermissionStatus,
 } from 'expo-image-picker';
 import {
@@ -58,6 +60,7 @@ export default (props) => {
 
     const [cameraPermissionInformation, requestPermission] =
         useCameraPermissions();
+    const [mediaLibraryPermissionInformation, requestMediaLibraryPermission] = useMediaLibraryPermissions();
 
     useEffect(() => {
         // Función para cargar las opciones desde la API
@@ -82,6 +85,23 @@ export default (props) => {
         });
         return () => unsubscribe();
     }, []);
+    const verifyMediaLibraryPermission = async () => {
+        if (mediaLibraryPermissionInformation.status === PermissionStatus.UNDETERMINED) {
+            const responseStatus = await requestMediaLibraryPermission();
+            return responseStatus.granted;
+        }
+        if (mediaLibraryPermissionInformation.status === PermissionStatus.DENIED) {
+            const permissionResponse = await requestMediaLibraryPermission();
+            if (!permissionResponse.granted) {
+                Alert.alert(
+                    'Insufficient Media Library Permission!',
+                    'This app needs media library permission'
+                );
+            }
+            return permissionResponse.granted;
+        }
+        return true;
+    };
     const verifyPermission = async () => {
         console.log('PermissionStatus.DENIED', PermissionStatus.DENIED);
         if (cameraPermissionInformation.status === PermissionStatus.UNDETERMINED) {
@@ -89,17 +109,14 @@ export default (props) => {
             return responseStatus.granted;
         }
         if (cameraPermissionInformation.status === PermissionStatus.DENIED) {
-            // Alert.alert(
-            //   'Insufficient Camera Permission!',
-            //   'This app need camera permission'
-            // );
             const permissionResponse = await requestPermission();
-            console.log(
-                'permissionResponse.granted-----',
-                permissionResponse.granted
-            );
-            return permissionResponse;
-            // return false;
+            if (!permissionResponse.granted) {
+                Alert.alert(
+                    'Insufficient Camera Permission!',
+                    'This app needs camera permission'
+                );
+            }
+            return permissionResponse.granted;
         }
         //setShow(true);
         setPhotoUri(null);
@@ -109,6 +126,7 @@ export default (props) => {
     const imagePickerHandler = async () => {
         const hasPermission = await verifyPermission();
         if (!hasPermission) {
+            Alert.alert('Insufficient Camera Permission!', 'This app needs camera permission');
             return;
         }
         const image = await launchCameraAsync({
@@ -116,10 +134,33 @@ export default (props) => {
             aspect: [16, 9],
             quality: 0.5,
         });
-        let nombre_foto = await handlePhotoCapture(image.assets[0].uri);
+        /*let nombre_foto = await handlePhotoCapture(image.assets[0].uri);
         setFoto(nombre_foto);
         setPhotoUri(image.assets[0].uri);
-        setShow(false);
+        setShow(false);*/
+
+        if (!image.canceled) {
+            const nombre_foto = await handlePhotoCapture(image.assets[0].uri);
+            setFoto(nombre_foto);
+            setPhotoUri(image.assets[0].uri);
+        }
+    };
+    const selectImageHandler = async () => {
+        const hasPermission = await verifyMediaLibraryPermission();
+        if (!hasPermission) {
+            return;
+        }
+
+        const image = await launchImageLibraryAsync({
+            allowsEditing: false,
+            quality: 0.5,
+        });
+
+        if (!image.canceled) {
+            const nombre_foto = await handlePhotoCapture(image.assets[0].uri);
+            setFoto(nombre_foto);
+            setPhotoUri(image.assets[0].uri);
+        }
     };
     const handleImagePress = (uri) => {
         setSelectedImageUri(uri);
@@ -310,11 +351,6 @@ export default (props) => {
             }
         }
     };
-    const openCamera = async () => {
-        setShow(true);
-        setPhotoUri(null);
-        setFoto(null);
-    }
     const closeCamera = () => {
         setShow(false);
         setPhotoUri(null);
@@ -334,30 +370,11 @@ export default (props) => {
 
         return [year, month, day].join('-') + " " + [hora.padStart(2, "0"), minutos, segundos].join(':');
     }
-    const renamePhoto = async (oldFileName, newFileName) => {
-        try {
-            const uploadsDir = FileSystem.documentDirectory + 'uploads/';
-
-            // Define the full paths for the old and new file names
-            const oldFilePath = uploadsDir + oldFileName;
-            const newFilePath = uploadsDir + newFileName;
-
-            // Use moveAsync to rename (move) the file
-            await FileSystem.moveAsync({
-                from: oldFilePath,
-                to: newFilePath
-            });
-
-            console.log(`Photo renamed successfully from ${oldFileName} to ${newFileName}`);
-        } catch (error) {
-            console.error("Failed to rename the photo:", error);
-        }
-    };
     const uploadPhotoToServer = async () => {
         try {
             let fileName = null;
             if (photoUri) {
-                fileName = 'photo_' + Date.now() + '.jpg';
+                fileName = foto;
             }
             if (descripcion == "" || descripcion == null) {
                 Alert.alert(
@@ -486,44 +503,9 @@ export default (props) => {
                     { cancelable: false }
                 );
             } else {
-                const LID = await addInventario(
+                await addInventario(
                     [
                         null,
-                        cuenta,
-                        selectedSede,
-                        codigo_af,
-                        null,
-                        null,
-                        codigo_fisico,
-                        descripcion,
-                        marca,
-                        modelo,
-                        serie,
-                        medida,
-                        color,
-                        detalles,
-                        observaciones,
-                        null,
-                        inventariador,
-                        selectedClasificacion,
-                        selectedEstado,
-                        inventariador,
-                        formatDate(Date.now()),
-                        foto,
-                        selectedEmplazamiento,
-                        cantidad,
-                        unidad,
-                        listaSedes.sede,
-                        nombreUsuario,
-                        listaEmplazamientos.emplazamiento,
-                        listaClasificacion.clasificacion,
-                        nombreEstado,
-                        formatDate(Date.now()),
-                        1
-                    ]);
-                /*await renamePhoto(foto, LID + '.jpg');
-                await updateInventario(
-                    [
                         cuenta,
                         selectedSede,
                         codigo_af,
@@ -545,10 +527,8 @@ export default (props) => {
                         selectedEstado,
                         inventariador,
                         formatDate(Date.now()),
-                        LID + '.jpg',
-                        null,
+                        foto,
                         selectedEmplazamiento,
-                        formatDate(Date.now()),
                         cantidad,
                         unidad,
                         listaSedes.sede,
@@ -556,10 +536,9 @@ export default (props) => {
                         listaEmplazamientos.emplazamiento,
                         listaClasificacion.clasificacion,
                         nombreEstado,
-                        LID
-                    ]
-                );*/
-                //setProductos(productos);
+                        null,
+                        '1'
+                    ]);
                 Alert.alert(
                     'Éxito',
                     'Guardado Localmente',
@@ -617,13 +596,17 @@ export default (props) => {
                             <TouchableOpacity onPress={() => handleImagePress(FileSystem.documentDirectory + 'uploads/' + foto + '?rand=' + Math.random())}>
                                 <Image style={{ width: 200, height: 200 }} source={{ uri: FileSystem.documentDirectory + 'uploads/' + foto + '?rand=' + Math.random() }} />
                             </TouchableOpacity> : ''
-
                     }
 
                     {photoUri && !show ? <Image source={{ uri: photoUri }} style={{ width: 200, height: 200 }} /> : ''}
                     {!show ?
-                        <View style={styles.iconocirculo}>
-                            <MaterialIcons name='camera' style={styles.iconos} onPress={imagePickerHandler} />
+                        <View  style={{flexDirection: 'row'}}>
+                            <View style={styles.iconocirculo}>
+                                <MaterialIcons name='camera' style={styles.iconos} onPress={imagePickerHandler} />
+                            </View>
+                            <View style={styles.iconocirculo}>
+                                <MaterialIcons name='image' style={styles.iconos} onPress={selectImageHandler} />
+                            </View>
                         </View> : ''
                     }
                     {show ?

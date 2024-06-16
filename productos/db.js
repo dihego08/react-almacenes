@@ -149,7 +149,8 @@ async function addInventario(data) {
         emplazamiento,
         clasificacion,
         estado,
-        fecha_modificacion, nuevo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, data);
+        fecha_modificacion,
+        nuevo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, data);
     console.log(result.lastInsertRowId, result.changes);
     return result.lastInsertRowId;
 };
@@ -287,8 +288,12 @@ clasificacion = ?,
 estado = ? WHERE id = ?`, data);
     console.log(result.lastInsertRowId, result.changes);
 }
+async function updateNuevo(id) {
+    const result = await db.runAsync(`UPDATE inventario SET nuevo = 0 WHERE id = ?`, id);
+    console.log(result.lastInsertRowId, result.changes);
+}
 async function getAllInventarioFechaModificacion() {
-    const allRows = await db.getAllAsync('SELECT * FROM inventario WHERE fecha_modificacion IS NOT NULL');
+    const allRows = await db.getAllAsync('SELECT * FROM inventario WHERE fecha_modificacion IS NOT NULL OR nuevo = 1');
     console.log("Seleccion las fechas modificaciones desde SQLite");
     return allRows;
 }
@@ -322,5 +327,5 @@ async function getAllCuentas() {
     return allRows;
 }
 export {
-    crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, getInventarioByIdLocal, updateInventario, getEmplazamientoByIdSede, getCountInventarioById, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento, getAllInventarioFechaModificacion, getAllInventarioByText, getAllDistinctUsuarios, eliminarTablas, getAllClasificacionNuevo, getAllClasificacionEditar, getDataGrafico, getAllCuentas
+    crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, getInventarioByIdLocal, updateInventario, getEmplazamientoByIdSede, getCountInventarioById, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento, getAllInventarioFechaModificacion, getAllInventarioByText, getAllDistinctUsuarios, eliminarTablas, getAllClasificacionNuevo, getAllClasificacionEditar, getDataGrafico, getAllCuentas, updateNuevo
 };

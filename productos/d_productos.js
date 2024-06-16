@@ -36,12 +36,6 @@ const ScreeInventario = ({ navigation, isFocused }) => {
             fetchLocalClasificacion();
         }
     }, [isFocused]);
-    async function verifyConnection() {
-        NetInfo.addEventListener(state => {
-            fetchLocalSedes();
-            fetchLocalClasificacion();
-        });
-    }
     const handleImagePress = (uri) => {
         setSelectedImageUri(uri);
         setIsImageViewerVisible(true);
@@ -79,7 +73,8 @@ const ScreeInventario = ({ navigation, isFocused }) => {
     async function fetchLocalCuentas() {
         const storedCuentas = await getAllCuentas();
         if (storedCuentas) {
-            storedCuentas.unshift({ id: 0, cuenta: "--CUENTA--" });
+            storedCuentas.unshift({ id: 0, cuenta: "TODAS" });
+            storedCuentas.unshift({ id: -1, cuenta: "--CUENTA--" });
             setCuentas(storedCuentas);
         }
     }
@@ -116,7 +111,7 @@ const ScreeInventario = ({ navigation, isFocused }) => {
         setSelectedCuenta(value);
         setLoading(true);
         setSelectedEmplazamiento(0);
-        if (value > 0) {
+        if (value >= 0 || value == 'TODAS') {
             setVisibleUsuarios(true);
         } else {
             setVisibleUsuarios(false);
@@ -126,27 +121,6 @@ const ScreeInventario = ({ navigation, isFocused }) => {
     }
     const handleClasificacionChange = async (value) => {
         setSelectedClasificacion(value);
-
-        /*let productos = await getAllInventario();
-        const productosFiltrados1 = productos.filter(
-            producto => producto.id_sede == selectedSede
-        );
-        const productosFiltrados2 = productosFiltrados1.filter(
-            producto => producto.id_emplazamiento == selectedEmplazamiento
-        );
-
-        if (value > 0) {
-            const productosFiltrados3 = productosFiltrados2.filter(
-                producto => producto.id_clasificacion == value
-            );
-            setFilteredProductos(productosFiltrados3);
-        } else {
-            const productosFiltrados3 = productosFiltrados2.filter(
-                producto => producto.id_clasificacion == null || producto.id_clasificacion == '' || producto.id_clasificacion == 0
-            );
-            setFilteredProductos(productosFiltrados3);
-        }
-        setLoading(false);*/
     }
 
     const filtrarProductos = async (text) => {
@@ -209,11 +183,16 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                 producto => producto.id_sede == selectedSede
             );
 
-            if (selectedCuenta && selectedCuenta > 0) {
-                const productosFiltrados2 = productosFiltrados1.filter(
-                    producto => producto.cuenta == selectedCuenta
-                );
-                if (selectedClasificacion >= 0 && selectedClasificacion != null /*selectedClasificacion && selectedClasificacion > -1*/) {
+            if (selectedCuenta && (selectedCuenta > -1 || selectedCuenta == 'TODAS')) {
+                let productosFiltrados2 = [];
+                if (selectedCuenta == 'TODAS') {
+                    productosFiltrados2 = productosFiltrados1;
+                } else {
+                    productosFiltrados2 = productosFiltrados1.filter(
+                        producto => producto.cuenta == selectedCuenta
+                    );
+                }
+                if (selectedClasificacion >= 0 && selectedClasificacion != null) {
 
                     if (selectedClasificacion == 0) {
                         const productosFiltrados3 = productosFiltrados2.filter(
@@ -236,7 +215,7 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                 const productosFiltrados2 = productosFiltrados1.filter(
                     producto => producto.id_emplazamiento == selectedEmplazamiento
                 );
-                if (selectedClasificacion >= 0 && selectedClasificacion != null /*selectedClasificacion && selectedClasificacion > -1*/) {
+                if (selectedClasificacion >= 0 && selectedClasificacion != null) {
 
                     if (selectedClasificacion == 0) {
                         const productosFiltrados3 = productosFiltrados2.filter(
