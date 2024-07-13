@@ -298,7 +298,7 @@ async function getAllInventarioFechaModificacion() {
     return allRows;
 }
 async function getAllInventarioByText(text) {
-    const allRows = await db.getAllAsync(`SELECT * FROM inventario WHERE descripcion LIKE '%${text}%' OR codigo_af LIKE '%${text}%' OR codigo_fisico LIKE '%${text}%' OR modelo LIKE '%${text}%' OR serie LIKE '%${text}%'`);
+    const allRows = await db.getAllAsync(`SELECT * FROM inventario WHERE descripcion LIKE '%${text}%' OR codigo_af LIKE '%${text}%' OR codigo_fisico LIKE '%${text}%' OR modelo LIKE '%${text}%' OR serie LIKE '%${text}%' OR marca LIKE '%${text}%'`);
     return allRows;
 }
 async function getDataGrafico(s, e, u) {

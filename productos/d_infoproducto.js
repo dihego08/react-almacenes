@@ -31,6 +31,7 @@ export default (props) => {
     const [selectedSede, setSelectedSede] = useState(null);
     const [selectedEstado, setSelectedEstado] = useState(null);
     const [selectedClasificacion, setSelectedClasificacion] = useState(null);
+    const [selectedDetalle, setSelectedDetalle] = useState(null);
     const [selectedUsuario, setSelectedUsuario] = useState(null);
     const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
     const [selectedImageUri, setSelectedImageUri] = useState(null);
@@ -134,10 +135,6 @@ export default (props) => {
             aspect: [16, 9],
             quality: 0.5,
         });
-        /*let nombre_foto = await handlePhotoCapture(image.assets[0].uri);
-        setFoto(nombre_foto);
-        setPhotoUri(image.assets[0].uri);
-        setShow(false);*/
 
         if (!image.canceled) {
             const nombre_foto = await handlePhotoCapture(image.assets[0].uri);
@@ -233,6 +230,13 @@ export default (props) => {
                 handleEmplazamientoChange(el_emplazamiento.id);
                 setSelectedUsuario(id_remoto_usuario);
                 handleUsuarioChange(id_remoto_usuario);
+                if (producto.detalles == "" || producto.detalles == null) {
+                    setSelectedDetalle(0);
+                    handleDetalleChange(0);
+                } else {
+                    setSelectedDetalle(producto.detalles);
+                    handleDetalleChange(producto.detalles);
+                }
 
                 setId(producto.id);
                 setCuenta(producto.cuenta);
@@ -246,7 +250,7 @@ export default (props) => {
                 setUnidad(producto.unidad);
                 setCantidad(producto.cantidad);
                 setColor(producto.color);
-                setDetalles(producto.detalles);
+                //setDetalles(producto.detalles);
                 setObservaciones(producto.observaciones);
                 setFoto(producto.foto);
             } else {
@@ -304,6 +308,9 @@ export default (props) => {
     const handleClasificacionChange = (value) => {
         setSelectedClasificacion(value);
     };
+    const handleDetalleChange = (value) => {
+        setSelectedDetalle(value);
+    }
     const handleUsuarioChange = (value) => {
         setSelectedUsuario(value);
     }
@@ -393,11 +400,9 @@ export default (props) => {
             if ((selectedClasificacion == 1 || selectedClasificacion == 3) && ((fileName == null && (foto == "" || foto == null || foto == "null")) || selectedSede == 0
                 || selectedEstado == 0
                 || selectedClasificacion == 0
-                || selectedUsuario == 0
                 || selectedEmplazamiento == 0 || selectedSede == ""
                 || selectedEstado == ""
                 || selectedClasificacion == ""
-                || selectedUsuario == ""
                 || selectedEmplazamiento == "")) {
                 Alert.alert(
                     'Alerta',
@@ -469,7 +474,7 @@ export default (props) => {
                     serie,
                     medida,
                     color,
-                    detalles,
+                    selectedDetalle,
                     observaciones,
                     null,
                     selectedUsuario,
@@ -518,7 +523,7 @@ export default (props) => {
                         serie,
                         medida,
                         color,
-                        detalles,
+                        selectedDetalle,
                         observaciones,
                         null,
                         selectedUsuario,
@@ -551,7 +556,6 @@ export default (props) => {
                     { cancelable: false }
                 );
             }
-            //}
         } catch (error) {
             Alert.alert(
                 'ERROR',
@@ -600,7 +604,7 @@ export default (props) => {
 
                     {photoUri && !show ? <Image source={{ uri: photoUri }} style={{ width: 200, height: 200 }} /> : ''}
                     {!show ?
-                        <View  style={{flexDirection: 'row'}}>
+                        <View style={{ flexDirection: 'row' }}>
                             <View style={styles.iconocirculo}>
                                 <MaterialIcons name='camera' style={styles.iconos} onPress={imagePickerHandler} />
                             </View>
@@ -825,13 +829,23 @@ export default (props) => {
                     <View style={styles.action}>
                         <View style={styles.action3}>
                             <Text style={styles.label}>Detalles:</Text>
-                            <TextInput
+                            {/*<TextInput
                                 placeholder="Detalles"
                                 placeholderTextColor="#B2BABB"
                                 style={styles.textInput}
                                 value={detalles ? detalles : ''}
                                 onChangeText={text => setDetalles(text)}
-                            />
+                            />*/}
+
+                            <Picker
+                                selectedValue={selectedDetalle}
+                                onValueChange={handleDetalleChange}
+                                style={styles.textInput}
+                            >
+                                <Picker.Item style={{ fontSize: 12 }} key='0' label='--DETALLE--' value='0' />
+                                <Picker.Item style={{ fontSize: 12 }} key='OPERATIVO' label='OPERATIVO' value='OPERATIVO' />
+                                <Picker.Item style={{ fontSize: 12 }} key='INOPERATIVO' label='INOPERATIVO' value='INOPERATIVO' />
+                            </Picker>
                         </View>
                     </View>
                     <View style={styles.action}>

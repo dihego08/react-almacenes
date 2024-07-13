@@ -142,13 +142,21 @@ const ScreeInventario = ({ navigation, isFocused }) => {
         if (text) {
             if (text.length >= 3) {
 
-                if (filteredProductosAnt) {
-                    const productosFiltrados = filteredProductosAnt.filter(producto => {
+                //if (filteredProductosAnt) {
+                let productosFiltradosCombo = await filtrar();
+                if (!productosFiltradosCombo) {
+                    console.log("EL PRIMER IF");
+                    const productosFiltrados = await getAllInventarioByText(text.toLowerCase());
+                    setFilteredProductos(productosFiltrados);
+                } else {
+                    console.log("EL SEGUNDO IF");
+                    const productosFiltrados = productosFiltradosCombo.filter(producto => {
                         const descripcion = producto.descripcion ? producto.descripcion.toLowerCase() : '';
                         const codigo_af = producto.codigo_af ? producto.codigo_af.toLowerCase() : '';
                         const codigo_fisico = producto.codigo_fisico ? producto.codigo_fisico.toLowerCase() : '';
                         const modelo = producto.modelo ? producto.modelo.toLowerCase() : '';
                         const serie = producto.serie ? producto.serie.toLowerCase() : '';
+                        const marca = producto.marca ? producto.marca.toLowerCase() : '';
                         const searchText = text.toLowerCase();
 
                         return (
@@ -156,15 +164,17 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                                 codigo_af.includes(searchText) ||
                                 codigo_fisico.includes(searchText) ||
                                 modelo.includes(searchText) ||
-                                serie.includes(searchText)) &&
+                                serie.includes(searchText) ||
+                                marca.includes(searchText)) &&
                             producto.descripcion != null
                         );
                     });
                     setFilteredProductos(productosFiltrados);
-                } else {
+                }
+                /*} else {
                     const productosFiltrados = await getAllInventarioByText(text.toLowerCase());
                     setFilteredProductos(productosFiltrados);
-                }
+                }*/
             }
         }
         setLoading(false);
@@ -175,8 +185,15 @@ const ScreeInventario = ({ navigation, isFocused }) => {
         await filtrarProductos(text);
         setLoading(false);
     }
-    const filtrar = async () => {
+    const filtrarCombos = async () => {
         setLoading(true);
+        let productosFiltradosCombo = await filtrar();
+        setFilteredProductos(productosFiltradosCombo);
+        setFilteredProductosAnt(productosFiltradosCombo);
+        setLoading(false);
+    }
+    const filtrar = async () => {
+
         if (selectedSede && selectedSede > 0) {
             let productos = await getAllInventario();
             const productosFiltrados1 = productos.filter(
@@ -193,23 +210,19 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                     );
                 }
                 if (selectedClasificacion >= 0 && selectedClasificacion != null) {
-
                     if (selectedClasificacion == 0) {
                         const productosFiltrados3 = productosFiltrados2.filter(
                             producto => producto.id_clasificacion == 0 || producto.id_clasificacion == null
                         );
-                        setFilteredProductos(productosFiltrados3);
-                        setFilteredProductosAnt(productosFiltrados3);
+                        return productosFiltrados3;//setFilteredProductos(productosFiltrados3);
                     } else {
                         const productosFiltrados3 = productosFiltrados2.filter(
                             producto => producto.id_clasificacion == selectedClasificacion
                         );
-                        setFilteredProductos(productosFiltrados3);
-                        setFilteredProductosAnt(productosFiltrados3);
+                        return productosFiltrados3;//setFilteredProductos(productosFiltrados3);
                     }
                 } else {
-                    setFilteredProductos(productosFiltrados2);
-                    setFilteredProductosAnt(productosFiltrados2);
+                    return productosFiltrados2;//setFilteredProductos(productosFiltrados2);
                 }
             } else if (selectedEmplazamiento && selectedEmplazamiento > 0) {
                 const productosFiltrados2 = productosFiltrados1.filter(
@@ -221,26 +234,20 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                         const productosFiltrados3 = productosFiltrados2.filter(
                             producto => producto.id_clasificacion == 0 || producto.id_clasificacion == null
                         );
-                        setFilteredProductos(productosFiltrados3);
-                        setFilteredProductosAnt(productosFiltrados3);
+                        return productosFiltrados3;//setFilteredProductos(productosFiltrados3);
                     } else {
                         const productosFiltrados3 = productosFiltrados2.filter(
                             producto => producto.id_clasificacion == selectedClasificacion
                         );
-                        setFilteredProductos(productosFiltrados3);
-                        setFilteredProductosAnt(productosFiltrados3);
+                        return productosFiltrados3;//setFilteredProductos(productosFiltrados3);
                     }
                 } else {
-                    setFilteredProductos(productosFiltrados2);
-                    setFilteredProductosAnt(productosFiltrados2);
+                    return productosFiltrados2;//setFilteredProductos(productosFiltrados2);
                 }
             } else {
-                setFilteredProductos(productosFiltrados1);
-                setFilteredProductosAnt(productosFiltrados1);
+                return productosFiltrados1;//setFilteredProductos(productosFiltrados1);
             }
         }
-
-        setLoading(false);
     }
     return (
         <View style={styles.viewStyle}>
@@ -298,7 +305,7 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                         </View>
                     </View>
                     <View style={[styles.action, { flexDirection: "row", textAlign: "center" }]}>
-                        <Button title="Filtrar" style={{ textAlign: "center" }} onPress={filtrar} disabled={loading} />
+                        <Button title="Filtrar" style={{ textAlign: "center" }} onPress={filtrarCombos} disabled={loading} />
                     </View>
                 </View>
             </View>
