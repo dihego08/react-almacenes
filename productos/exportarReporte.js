@@ -8,10 +8,8 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import NetInfo from '@react-native-community/netinfo';
 import { Picker } from '@react-native-picker/picker';
 const screenWidth = Dimensions.get('window').width;
-import { zip, unzip, unzipAssets, subscribe } from 'react-native-zip-archive';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import { downloadZipFile } from "./zipFunction";
 
 import {
     addInventario, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, updateInventario, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento, getAllDistinctUsuarios, getAllClasificacionNuevo, getAllClasificacionEditar, getAllUsuarios, getAllInventario, getDataGrafico
@@ -275,7 +273,6 @@ export default () => {
     }
     const handleDownloadZip = async () => {
         try {
-            await downloadZipFile();
             Alert.alert('¡Éxito!', 'El archivo zip se ha descargado correctamente.');
         } catch (error) {
             Alert.alert('Error', 'Hubo un problema al descargar el archivo zip.');
