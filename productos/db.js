@@ -3,9 +3,15 @@ import { useEffect } from 'react';
 
 const db = SQLite.openDatabaseSync('database.db');
 
+async function configureDatabase() {
+        await db.execAsync('PRAGMA cache_size = 2000;', []);
+        console.log('Cache size set to 2000 pages');
+        await db.execAsync('PRAGMA cache_spill = OFF;', []);
+        console.log('Cache spill turned off');
+};
+
 async function eliminarTablas() {
     await db.execAsync(
-        //'CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);'
         `DROP TABLE inventario;
         DROP TABLE clasificacion;
         DROP TABLE estados;
@@ -17,7 +23,6 @@ async function eliminarTablas() {
 async function crearInventario() {
     // Crea la tabla si no existe
     await db.execAsync(
-        //'CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);'
         `CREATE TABLE IF NOT EXISTS inventario (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             cuenta TEXT,
@@ -58,7 +63,6 @@ async function crearInventario() {
 }
 async function crearSedes() {
     await db.execAsync(
-        //'CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);'
         `CREATE TABLE IF NOT EXISTS sedes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             codigo TEXT,
@@ -70,7 +74,6 @@ async function crearSedes() {
 }
 async function crearEmplazamiento() {
     await db.execAsync(
-        //'CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);'
         `CREATE TABLE IF NOT EXISTS emplazamiento (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             id_sede INTEGER,
@@ -83,7 +86,6 @@ async function crearEmplazamiento() {
 }
 async function crearUsuario() {
     await db.execAsync(
-        //'CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);'
         `CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             id_remoto TEXT,
@@ -100,7 +102,6 @@ async function crearUsuario() {
 }
 async function crearEstado() {
     await db.execAsync(
-        //'CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);'
         `CREATE TABLE IF NOT EXISTS estados (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             estado TEXT
@@ -109,7 +110,6 @@ async function crearEstado() {
 }
 async function crearClasificacion() {
     await db.execAsync(
-        //'CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);'
         `CREATE TABLE IF NOT EXISTS clasificacion (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             clasificacion 	TEXT
@@ -327,5 +327,5 @@ async function getAllCuentas() {
     return allRows;
 }
 export {
-    crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, getInventarioByIdLocal, updateInventario, getEmplazamientoByIdSede, getCountInventarioById, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento, getAllInventarioFechaModificacion, getAllInventarioByText, getAllDistinctUsuarios, eliminarTablas, getAllClasificacionNuevo, getAllClasificacionEditar, getDataGrafico, getAllCuentas, updateNuevo
+    crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, getInventarioByIdLocal, updateInventario, getEmplazamientoByIdSede, getCountInventarioById, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento, getAllInventarioFechaModificacion, getAllInventarioByText, getAllDistinctUsuarios, eliminarTablas, getAllClasificacionNuevo, getAllClasificacionEditar, getDataGrafico, getAllCuentas, updateNuevo, configureDatabase
 };

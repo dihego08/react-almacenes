@@ -17,7 +17,7 @@ import {
     PermissionStatus,
 } from 'expo-image-picker';
 import {
-    addInventario, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, updateInventario, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento, getAllDistinctUsuarios, getAllClasificacionNuevo, getAllClasificacionEditar
+    addInventario, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, updateInventario, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento, getAllDistinctUsuarios, getAllClasificacionNuevo
 } from "./db";
 
 export default (props) => {
@@ -164,14 +164,14 @@ export default (props) => {
         setIsImageViewerVisible(true);
     };
     async function fetchLocalSedes() {
-        const storedOptions = await getAllSedes();//await AsyncStorage.getItem('sedes');
+        const storedOptions = await getAllSedes();
         if (storedOptions) {
             storedOptions.unshift({ id: 0, sede: "--SELECCIONE--", codigo: '000', usuario_creacion: null, fecha_creacion: null });
             setSedes(storedOptions);
         }
     }
     async function fetchLocalEstado() {
-        const storedEstado = await getAllEstado();//await AsyncStorage.getItem('estados');
+        const storedEstado = await getAllEstado();
         if (storedEstado) {
             storedEstado.unshift({ id: 0, estado: "--SELECCIONE--" });
             setEstados(storedEstado);
@@ -498,7 +498,7 @@ export default (props) => {
                 ]);
                 Alert.alert(
                     'Éxito',
-                    'Guardado Localmente',
+                    'Actualizado Localmente',
                     [
                         {
                             text: 'OK',

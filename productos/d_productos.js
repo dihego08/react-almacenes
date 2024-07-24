@@ -3,12 +3,10 @@ import { StyleSheet, View, Image, Pressable, Text, ScrollView, TextInput, Toucha
 import { Picker } from '@react-native-picker/picker';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import * as FileSystem from 'expo-file-system';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo from '@react-native-community/netinfo';
 import LoadingModal from './LoadingModal';
 import { withNavigationFocus } from 'react-navigation';
 import ImageViewer from "./ImageViewer";
-import { crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getEmplazamientoByIdSede, getInventarioById, getCountInventarioById, getAllInventarioFechaModificacion, getAllClasificacion, getAllInventarioByText, getAllCuentas } from "./db";
+import { getAllInventario, getAllSedes, getAllEmplazamientos, getAllClasificacion, getAllInventarioByText, getAllCuentas, getAllDistinctUsuarios, configureDatabase } from "./db";
 
 const ScreeInventario = ({ navigation, isFocused }) => {
     const [options, setSedes] = useState([]);
@@ -24,6 +22,7 @@ const ScreeInventario = ({ navigation, isFocused }) => {
     const [filteredProductos, setFilteredProductos] = useState([]);
     const [isVisible, setVisible] = useState(false);
     const [isVisibleUsuarios, setVisibleUsuarios] = useState(false);
+    const [isVisibleUsuariosReal, setVisibleUsuariosReal] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
     const [selectedImageUri, setSelectedImageUri] = useState(null);
@@ -34,17 +33,18 @@ const ScreeInventario = ({ navigation, isFocused }) => {
         if (isFocused) {
             fetchLocalSedes();
             fetchLocalClasificacion();
+            configureDatabase();
         }
     }, [isFocused]);
     const handleImagePress = (uri) => {
         setSelectedImageUri(uri);
         setIsImageViewerVisible(true);
     };
-    async function fetchLocalUsuarios(id_emplazamiento) {
-        const storedUsuarios = await getAllUsuarios();
+    async function fetchLocalUsuarios() {
+        const storedUsuarios = await getAllDistinctUsuarios();
         if (storedUsuarios) {
-            storedUsuarios.unshift({ id: 0, nombres: "--USUARIOS--", id_emplazamiento: id_emplazamiento });
-            setUsuarios(storedUsuarios.filter(item => item.id_emplazamiento == id_emplazamiento));
+            storedUsuarios.unshift({ id: 0, nombres: "--USUARIOS--" });
+            setUsuarios(storedUsuarios);
         }
     }
 
@@ -64,7 +64,7 @@ const ScreeInventario = ({ navigation, isFocused }) => {
         }
     }
     async function fetchLocalEmplazamientosFromAPI(id_sede) {
-        const storedEmplazamientos = await getAllEmplazamientos();//await AsyncStorage.getItem('emplazamientos');
+        const storedEmplazamientos = await getAllEmplazamientos();
         if (storedEmplazamientos) {
             storedEmplazamientos.unshift({ id: 0, emplazamiento: "--EMPLAZAMIENTO--", id_sede: id_sede });
             setEmplazamientos(storedEmplazamientos.filter(item => item.id_sede == id_sede));
@@ -98,7 +98,7 @@ const ScreeInventario = ({ navigation, isFocused }) => {
         setLoading(true);
         setSelectedCuenta(0);
         if (value > 0) {
-            fetchLocalUsuarios(value);
+            //fetchLocalUsuarios(value);
             setVisibleUsuarios(true);
         } else {
             setFilteredProductos([]);
@@ -121,6 +121,15 @@ const ScreeInventario = ({ navigation, isFocused }) => {
     }
     const handleClasificacionChange = async (value) => {
         setSelectedClasificacion(value);
+        if (value < 0) {
+            setVisibleUsuariosReal(false);
+        } else {
+            fetchLocalUsuarios();
+            setVisibleUsuariosReal(true);
+        }
+    }
+    const handleUsuarioChange = async (value) => {
+        setSelectedUsuario(value);
     }
 
     const filtrarProductos = async (text) => {
@@ -141,15 +150,11 @@ const ScreeInventario = ({ navigation, isFocused }) => {
         let text = textoFiltro;
         if (text) {
             if (text.length >= 3) {
-
-                //if (filteredProductosAnt) {
                 let productosFiltradosCombo = await filtrar();
                 if (!productosFiltradosCombo) {
-                    console.log("EL PRIMER IF");
                     const productosFiltrados = await getAllInventarioByText(text.toLowerCase());
                     setFilteredProductos(productosFiltrados);
                 } else {
-                    console.log("EL SEGUNDO IF");
                     const productosFiltrados = productosFiltradosCombo.filter(producto => {
                         const descripcion = producto.descripcion ? producto.descripcion.toLowerCase() : '';
                         const codigo_af = producto.codigo_af ? producto.codigo_af.toLowerCase() : '';
@@ -171,10 +176,6 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                     });
                     setFilteredProductos(productosFiltrados);
                 }
-                /*} else {
-                    const productosFiltrados = await getAllInventarioByText(text.toLowerCase());
-                    setFilteredProductos(productosFiltrados);
-                }*/
             }
         }
         setLoading(false);
@@ -210,16 +211,23 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                     );
                 }
                 if (selectedClasificacion >= 0 && selectedClasificacion != null) {
+                    let productosFiltrados3 = null;
                     if (selectedClasificacion == 0) {
-                        const productosFiltrados3 = productosFiltrados2.filter(
+                        productosFiltrados3 = productosFiltrados2.filter(
                             producto => producto.id_clasificacion == 0 || producto.id_clasificacion == null
                         );
-                        return productosFiltrados3;//setFilteredProductos(productosFiltrados3);
                     } else {
-                        const productosFiltrados3 = productosFiltrados2.filter(
+                        productosFiltrados3 = productosFiltrados2.filter(
                             producto => producto.id_clasificacion == selectedClasificacion
                         );
-                        return productosFiltrados3;//setFilteredProductos(productosFiltrados3);
+                    }
+                    if (selectedUsuario == 0 || selectedUsuario == null) {
+                        return productosFiltrados3;
+                    } else {
+                        const productosFiltrados4 = productosFiltrados3.filter(
+                            producto => producto.id_usuario == selectedUsuario
+                        );
+                        return productosFiltrados4;
                     }
                 } else {
                     return productosFiltrados2;//setFilteredProductos(productosFiltrados2);
@@ -229,17 +237,23 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                     producto => producto.id_emplazamiento == selectedEmplazamiento
                 );
                 if (selectedClasificacion >= 0 && selectedClasificacion != null) {
-
+                    let productosFiltrados3 = null;
                     if (selectedClasificacion == 0) {
-                        const productosFiltrados3 = productosFiltrados2.filter(
+                        productosFiltrados3 = productosFiltrados2.filter(
                             producto => producto.id_clasificacion == 0 || producto.id_clasificacion == null
                         );
-                        return productosFiltrados3;//setFilteredProductos(productosFiltrados3);
                     } else {
-                        const productosFiltrados3 = productosFiltrados2.filter(
+                        productosFiltrados3 = productosFiltrados2.filter(
                             producto => producto.id_clasificacion == selectedClasificacion
                         );
-                        return productosFiltrados3;//setFilteredProductos(productosFiltrados3);
+                    }
+                    if (selectedUsuario == 0 || selectedUsuario == null) {
+                        return productosFiltrados3;
+                    } else {
+                        const productosFiltrados4 = productosFiltrados3.filter(
+                            producto => producto.id_usuario == selectedUsuario
+                        );
+                        return productosFiltrados4;
                     }
                 } else {
                     return productosFiltrados2;//setFilteredProductos(productosFiltrados2);
@@ -300,6 +314,19 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                             >
                                 {clasificacion.map((item) => (
                                     <Picker.Item style={{ fontSize: 12 }} key={item.id} label={item.clasificacion} value={item.id} />
+                                ))}
+                            </Picker>
+                        </View>
+                    </View>
+                    <View style={[styles.fieldSet, { display: isVisibleUsuariosReal ? 'flex' : 'none' }]}>
+                        <View style={[styles.action]}>
+                            <Picker
+                                selectedValue={selectedUsuario}
+                                onValueChange={handleUsuarioChange}
+                                style={styles.textInput}
+                            >
+                                {usuarios.map((item) => (
+                                    <Picker.Item style={{ fontSize: 12 }} key={item.id_remoto} label={item.nombres} value={item.id_remoto} />
                                 ))}
                             </Picker>
                         </View>
