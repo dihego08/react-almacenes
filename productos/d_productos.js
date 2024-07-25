@@ -22,7 +22,6 @@ const ScreeInventario = ({ navigation, isFocused }) => {
     const [filteredProductos, setFilteredProductos] = useState([]);
     const [isVisible, setVisible] = useState(false);
     const [isVisibleUsuarios, setVisibleUsuarios] = useState(false);
-    const [isVisibleUsuariosReal, setVisibleUsuariosReal] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
     const [selectedImageUri, setSelectedImageUri] = useState(null);
@@ -84,6 +83,7 @@ const ScreeInventario = ({ navigation, isFocused }) => {
         if (value > 0) {
             fetchLocalEmplazamientosFromAPI(value);
             fetchLocalCuentas();
+            fetchLocalUsuarios();
             setVisible(true);
         } else {
             setFilteredProductos([]);
@@ -121,15 +121,14 @@ const ScreeInventario = ({ navigation, isFocused }) => {
     }
     const handleClasificacionChange = async (value) => {
         setSelectedClasificacion(value);
-        if (value < 0) {
-            setVisibleUsuariosReal(false);
-        } else {
-            fetchLocalUsuarios();
-            setVisibleUsuariosReal(true);
-        }
     }
     const handleUsuarioChange = async (value) => {
         setSelectedUsuario(value);
+        if (value > 0) {
+            setVisibleUsuarios(true);
+        } else {
+            setVisibleUsuarios(false);
+        }
     }
 
     const filtrarProductos = async (text) => {
@@ -162,6 +161,7 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                         const modelo = producto.modelo ? producto.modelo.toLowerCase() : '';
                         const serie = producto.serie ? producto.serie.toLowerCase() : '';
                         const marca = producto.marca ? producto.marca.toLowerCase() : '';
+                        const observaciones = producto.observaciones ? producto.observaciones.toLowerCase() : '';
                         const searchText = text.toLowerCase();
 
                         return (
@@ -170,7 +170,8 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                                 codigo_fisico.includes(searchText) ||
                                 modelo.includes(searchText) ||
                                 serie.includes(searchText) ||
-                                marca.includes(searchText)) &&
+                                marca.includes(searchText) ||
+                                observaciones.includes(searchText)) &&
                             producto.descripcion != null
                         );
                     });
@@ -221,14 +222,7 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                             producto => producto.id_clasificacion == selectedClasificacion
                         );
                     }
-                    if (selectedUsuario == 0 || selectedUsuario == null) {
-                        return productosFiltrados3;
-                    } else {
-                        const productosFiltrados4 = productosFiltrados3.filter(
-                            producto => producto.id_usuario == selectedUsuario
-                        );
-                        return productosFiltrados4;
-                    }
+                    return productosFiltrados3;
                 } else {
                     return productosFiltrados2;//setFilteredProductos(productosFiltrados2);
                 }
@@ -247,14 +241,26 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                             producto => producto.id_clasificacion == selectedClasificacion
                         );
                     }
-                    if (selectedUsuario == 0 || selectedUsuario == null) {
-                        return productosFiltrados3;
-                    } else {
-                        const productosFiltrados4 = productosFiltrados3.filter(
-                            producto => producto.id_usuario == selectedUsuario
+                    return productosFiltrados3;
+                } else {
+                    return productosFiltrados2;//setFilteredProductos(productosFiltrados2);
+                }
+            } else if (selectedUsuario > 0) {
+                const productosFiltrados2 = productosFiltrados1.filter(
+                    producto => producto.id_usuario == selectedUsuario
+                );
+                if (selectedClasificacion >= 0 && selectedClasificacion != null) {
+                    let productosFiltrados3 = null;
+                    if (selectedClasificacion == 0) {
+                        productosFiltrados3 = productosFiltrados2.filter(
+                            producto => producto.id_clasificacion == 0 || producto.id_clasificacion == null
                         );
-                        return productosFiltrados4;
+                    } else {
+                        productosFiltrados3 = productosFiltrados2.filter(
+                            producto => producto.id_clasificacion == selectedClasificacion
+                        );
                     }
+                    return productosFiltrados3;
                 } else {
                     return productosFiltrados2;//setFilteredProductos(productosFiltrados2);
                 }
@@ -304,6 +310,17 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                                 ))}
                             </Picker>
                         </View>
+                        <View style={[styles.action]}>
+                            <Picker
+                                selectedValue={selectedUsuario}
+                                onValueChange={handleUsuarioChange}
+                                style={styles.textInput}
+                            >
+                                {usuarios.map((item) => (
+                                    <Picker.Item style={{ fontSize: 12 }} key={item.id_remoto} label={item.nombres} value={item.id_remoto} />
+                                ))}
+                            </Picker>
+                        </View>
                     </View>
                     <View style={[styles.fieldSet, { display: isVisibleUsuarios ? 'flex' : 'none' }]}>
                         <View style={[styles.action]}>
@@ -314,19 +331,6 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                             >
                                 {clasificacion.map((item) => (
                                     <Picker.Item style={{ fontSize: 12 }} key={item.id} label={item.clasificacion} value={item.id} />
-                                ))}
-                            </Picker>
-                        </View>
-                    </View>
-                    <View style={[styles.fieldSet, { display: isVisibleUsuariosReal ? 'flex' : 'none' }]}>
-                        <View style={[styles.action]}>
-                            <Picker
-                                selectedValue={selectedUsuario}
-                                onValueChange={handleUsuarioChange}
-                                style={styles.textInput}
-                            >
-                                {usuarios.map((item) => (
-                                    <Picker.Item style={{ fontSize: 12 }} key={item.id_remoto} label={item.nombres} value={item.id_remoto} />
                                 ))}
                             </Picker>
                         </View>

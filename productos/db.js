@@ -4,10 +4,8 @@ import { useEffect } from 'react';
 const db = SQLite.openDatabaseSync('database.db');
 
 async function configureDatabase() {
-        await db.execAsync('PRAGMA cache_size = 2000;', []);
-        console.log('Cache size set to 2000 pages');
-        await db.execAsync('PRAGMA cache_spill = OFF;', []);
-        console.log('Cache spill turned off');
+    await db.execAsync('PRAGMA cache_size = 2000;', []);
+    await db.execAsync('PRAGMA cache_spill = OFF;', []);
 };
 
 async function eliminarTablas() {
@@ -151,28 +149,22 @@ async function addInventario(data) {
         estado,
         fecha_modificacion,
         nuevo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, data);
-    console.log(result.lastInsertRowId, result.changes);
     return result.lastInsertRowId;
 };
 async function addClasificacion(data) {
     const result = await db.runAsync(`INSERT INTO clasificacion(id, clasificacion) VALUES (?, ?);`, data);
-    console.log(result.lastInsertRowId, result.changes);
 }
 async function addEstado(data) {
     const result = await db.runAsync(`INSERT INTO estados(id, estado) VALUES (?, ?)`, data);
-    console.log(result.lastInsertRowId, result.changes);
 }
 async function addSede(data) {
     const result = await db.runAsync(`INSERT INTO sedes(id, codigo, sede, usuario_creacion, fecha_creacion) VALUES (?, ?, ?, ?, ?)`, data);
-    console.log(result.lastInsertRowId, result.changes);
 }
 async function addEmplazamiento(data) {
     const result = await db.runAsync(`INSERT INTO emplazamiento(id, id_sede, codigo, emplazamiento, usuario_creacion, fecha_creacion) VALUES (?, ?, ?, ?, ?, ?)`, data);
-    console.log(result.lastInsertRowId, result.changes);
 }
 async function addUsuario(data) {
     const result = await db.runAsync(`INSERT INTO usuarios(id_remoto, codigo, nombres, user, pass, fecha_creacion, usuario_creacion, nivel, id_emplazamiento) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, data);
-    console.log(result.lastInsertRowId, result.changes);
 }
 async function getCountInventario() {
     const firstRow = await db.getFirstAsync('SELECT COUNT(*) AS cant FROM inventario;');
@@ -204,22 +196,18 @@ async function getCountInventarioById(id) {
 }
 async function getAllInventario() {
     const allRows = await db.getAllAsync('SELECT * FROM inventario ORDER BY descripcion ASC');
-    console.log("Seleccion Inventario desde SQLite");
     return allRows;
 }
 async function getAllUsuarios() {
     const allRows = await db.getAllAsync('SELECT * FROM usuarios ORDER BY nombres ASC');
-    console.log("Seleccion Usuarios desde SQLite");
     return allRows;
 }
 async function getAllDistinctUsuarios() {
     const allRows = await db.getAllAsync('SELECT distinct id_remoto, nombres FROM usuarios ORDER BY nombres ASC');
-    console.log("Seleccion Usuarios desde SQLite");
     return allRows;
 }
 async function getAllSedes() {
     const allRows = await db.getAllAsync('SELECT * FROM sedes ORDER BY sede ASC');
-    console.log("Seleccion Sedes desde SQLite");
     return allRows;
 }
 async function getSedeByID(id) {
@@ -244,32 +232,26 @@ async function getEmplazamientoByID(id) {
 }
 async function getAllEmplazamientos() {
     const allRows = await db.getAllAsync('SELECT * FROM emplazamiento ORDER BY emplazamiento ASC');
-    console.log("Seleccion Emplazamiento desde SQLite");
     return allRows;
 }
 async function getEmplazamientoByIdSede(id_sede) {
     const allRows = await db.getAllAsync('SELECT * FROM emplazamiento WHERE id_sede = ? ORDER BY emplazamiento ASC', id_sede);
-    console.log("Seleccion Emplazamiento desde SQLite");
     return allRows;
 }
 async function getAllEstado() {
     const allRows = await db.getAllAsync('SELECT * FROM estados');
-    console.log("Seleccion estados desde SQLite");
     return allRows;
 }
 async function getAllClasificacion() {
     const allRows = await db.getAllAsync('SELECT * FROM clasificacion');
-    console.log("Seleccion clasificacion desde SQLite");
     return allRows;
 }
 async function getAllClasificacionNuevo() {
     const allRows = await db.getAllAsync('SELECT * FROM clasificacion WHERE id IN (3);');
-    console.log("Seleccion clasificacion desde SQLite");
     return allRows;
 }
 async function getAllClasificacionEditar() {
     const allRows = await db.getAllAsync('SELECT * FROM clasificacion WHERE id IN (1, 2);');
-    console.log("Seleccion clasificacion desde SQLite");
     return allRows;
 }
 async function getInventarioById(id_inventario) {
@@ -286,19 +268,16 @@ nombres = ?,
 emplazamiento = ?,
 clasificacion = ?,
 estado = ? WHERE id = ?`, data);
-    console.log(result.lastInsertRowId, result.changes);
 }
 async function updateNuevo(id) {
     const result = await db.runAsync(`UPDATE inventario SET nuevo = 0 WHERE id = ?`, id);
-    console.log(result.lastInsertRowId, result.changes);
 }
 async function getAllInventarioFechaModificacion() {
     const allRows = await db.getAllAsync('SELECT * FROM inventario WHERE fecha_modificacion IS NOT NULL OR nuevo = 1');
-    console.log("Seleccion las fechas modificaciones desde SQLite");
     return allRows;
 }
 async function getAllInventarioByText(text) {
-    const allRows = await db.getAllAsync(`SELECT * FROM inventario WHERE descripcion LIKE '%${text}%' OR codigo_af LIKE '%${text}%' OR codigo_fisico LIKE '%${text}%' OR modelo LIKE '%${text}%' OR serie LIKE '%${text}%' OR marca LIKE '%${text}%'`);
+    const allRows = await db.getAllAsync(`SELECT * FROM inventario WHERE descripcion LIKE '%${text}%' OR codigo_af LIKE '%${text}%' OR codigo_fisico LIKE '%${text}%' OR modelo LIKE '%${text}%' OR serie LIKE '%${text}%' OR marca LIKE '%${text}%' OR observaciones LIKE '%${text}%'`);
     return allRows;
 }
 async function getDataGrafico(s, e, u) {
@@ -319,7 +298,6 @@ async function getDataGrafico(s, e, u) {
     }
     query += ' GROUP BY c.clasificacion;';
     const allRows = await db.getAllAsync(query);
-    console.log("Seleccion la data del grafico");
     return allRows;
 }
 async function getAllCuentas() {
