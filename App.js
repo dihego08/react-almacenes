@@ -26,6 +26,7 @@ import p_clientesScreen from './propietario/p_clientes'
 import crudproductosScreen from './frontendprop/crudproductos'
 import exportarReporteScreen from './productos/exportarReporte';
 import sincronizarScreen from './productos/sincronizar';
+import controlScreen from './productos/control'
 import Home from './screens/Home';
 
 const AppNavigator = createStackNavigator({
@@ -55,7 +56,7 @@ const AppNavigator = createStackNavigator({
 	},
 	ProductosDistribuidor: {
 		screen: d_productosScreen
-	},	
+	},
 	InformaciónDeProducto: {
 		screen: d_infoproductoScreen
 	},
@@ -108,11 +109,17 @@ const AppNavigator = createStackNavigator({
 	ExportarReporte: {
 		screen: exportarReporteScreen
 	},
-	Sincronizar:{
+	Sincronizar: {
 		screen: sincronizarScreen
+	},
+	Control: {
+		screen: controlScreen
 	}
 }, {
-	initialRouteName: 'Home'
+	initialRouteName: 'Home',
+	defaultNavigationOptions: {
+		headerShown: false,  // Esto quita el header de todas las pantallas
+	},
 });
 export default createAppContainer(AppNavigator);
 

@@ -1,39 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Image, Pressable, Text, ScrollView, TextInput, TouchableOpacity, Button } from "react-native";
-import { Picker } from '@react-native-picker/picker';
+import { StyleSheet, View, Text, Alert, Button, TextInput, Pressable, ScrollView, TouchableOpacity, Image } from "react-native";
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { Picker } from '@react-native-picker/picker';
 import * as FileSystem from 'expo-file-system';
 import LoadingModal from './LoadingModal';
-import { withNavigationFocus } from 'react-navigation';
-import ImageViewer from "./ImageViewer";
-import { getAllInventario, getAllSedes, getAllAlmacenes, getAllInventarioByText, configureDatabase } from "./db";
+import { getAllControlParams, getAllAlmacenes, getAllSedes } from "./db";
 
-const ScreeInventario = ({ navigation, isFocused }) => {
+export default () => {
+    const [loading, setLoading] = useState(false);
+    const [filteredControl, setFilteredControl] = useState([]);
+    const [filteredControlAnt, setFilteredControlAnt] = useState([]);
     const [options, setSedes] = useState([]);
     const [almacenes, setAlmacenes] = useState([]);
-    const [selectedSede, setSelectedSede] = useState(null);
-    const [selectedAlmacen, setSelectedAlmacen] = useState(null);
-    const [filteredControl, setFilteredControl] = useState([]);
     const [isVisible, setVisible] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
-    const [selectedImageUri, setSelectedImageUri] = useState(null);
-    const [filteredControlAnt, setFilteredControlAnt] = useState(null);
-    const [textoFiltro, setTextoFiltro] = useState(null);
+    const [selectedSede, setSelectedSede] = useState(0);
+    const [selectedAlmacen, setSelectedAlmacen] = useState(0);
 
-    useEffect(() => {
-        if (isFocused) {
-            fetchLocalSedes();
-            configureDatabase();
-        }
-    }, [isFocused]);
-    const handleImagePress = (uri) => {
-        setSelectedImageUri(uri);
-        setIsImageViewerVisible(true);
-    };
-    const handlePress = () => {
-        console.log('Botón flotante presionado');
-    };
     async function fetchLocalSedes() {
         const storedOptions = await getAllSedes();
         if (storedOptions) {
@@ -63,88 +45,31 @@ const ScreeInventario = ({ navigation, isFocused }) => {
     };
     const handleAlmacenChange = (value) => {
         setSelectedAlmacen(value);
-        setLoading(true);
-
-        setLoading(false);
     }
 
-    const filtrarProductos = async (text) => {
-        setLoading(true);
-        // Filtrar productos basados en el texto de búsqueda
-        if (text) {
-        } else {
-            if (filteredControlAnt) {
-                setFilteredControl(filteredControlAnt);
-            } else {
-                setFilteredControl([]);
-            }
-        }
-        setLoading(false);
-    }
     const filtrarText = async () => {
         setLoading(true);
-        let text = textoFiltro;
-        if (text) {
-            if (text.length >= 3) {
-                let productosFiltradosCombo = await filtrar();
-                if (!productosFiltradosCombo) {
-                    const productosFiltrados = await getAllInventarioByText(text.toLowerCase());
-                    setFilteredControl(productosFiltrados);
-                } else {
-                    const productosFiltrados = productosFiltradosCombo.filter(producto => {
-                        const material = producto.material ? producto.material.toLowerCase() : '';
-                        const searchText = text.toLowerCase();
-
-                        return (
-                            (material.includes(searchText)) &&
-                            producto.material != null
-                        );
-                    });
-                    setFilteredControl(productosFiltrados);
-                }
-            }
-        }
+        const productosFiltrados = await getAllControlParams(selectedSede, selectedAlmacen);
+        setFilteredControl(productosFiltrados);
+        setFilteredControlAnt(productosFiltrados);
         setLoading(false);
     }
     const handleTextChange = async (text) => {
-        setLoading(true);
-        setTextoFiltro(text);
-        await filtrarProductos(text);
-        setLoading(false);
-    }
-    const filtrarCombos = async () => {
-        setLoading(true);
-        let productosFiltradosCombo = await filtrar();
-        setFilteredControl(productosFiltradosCombo);
-        setFilteredControlAnt(productosFiltradosCombo);
-        setLoading(false);
-    }
-    const filtrar = async () => {
-
-        if (selectedSede && selectedSede > 0) {
-            let productos = await getAllInventario();
-            const productosFiltrados1 = productos.filter(
-                producto => producto.id_sede == selectedSede
-            );
-            if (selectedAlmacen && selectedAlmacen > 0) {
-                const productosFiltrados2 = productosFiltrados1.filter(
-                    producto => producto.id_almacen == selectedAlmacen
-                );
-                return productosFiltrados2;
-
-            } else {
-                return productosFiltrados1;
-            }
+        if (text.length == 0) {
+            setFilteredControl(filteredControlAnt);
         } else {
-            let productos = await getAllInventario();
-            return productos;
+            let filtrado = filteredControlAnt.filter(item => item.material.toLowerCase().includes(text.toLowerCase()));
+            setFilteredControl(filtrado);
         }
     }
+    useEffect(() => {
+        fetchLocalSedes();
+    }, []);
     return (
         <View style={styles.viewStyle}>
             <View style={styles.encabezado}>
                 <View style={styles.contenedorTexto}>
-                    <Text style={styles.textotitulo1}>Listado de Productos</Text>
+                    <Text style={styles.textotitulo1}>Control</Text>
                 </View>
                 <View style={styles.textoinfo2}>
                     <View style={styles.action}>
@@ -172,12 +97,11 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                         </View>
                     </View>
                     <View style={[styles.action, { flexDirection: "row", textAlign: "center" }]}>
-                        <Button title="Filtrar" style={{ textAlign: "center" }} onPress={filtrarCombos} disabled={loading} />
+                        <Button title="Filtrar" style={{ textAlign: "center" }} onPress={filtrarText} disabled={loading} />
                     </View>
                 </View>
             </View>
-
-            <View style={styles.container}>
+            <View style={[styles.container]}>
                 <View style={styles.action}>
                     <TextInput
                         placeholder="Digite para filtrar"
@@ -186,62 +110,40 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                         onChangeText={handleTextChange}
                     />
                     <View style={styles.iconocirculobusca}>
-                        <MaterialIcons name='search' style={styles.iconosbusca}
-                            onPress={filtrarText} disabled={loading} />
-                    </View>
-                    <View style={styles.iconocirculobusca}>
-                        <MaterialIcons name='add' style={styles.iconosbusca} onPress={() => navigation.navigate('InformacionProducto', {
-                            id: -1
-                        })} />
+                        <MaterialIcons name='search' style={styles.iconosbusca} />
                     </View>
                 </View>
-                <ScrollView style={styles.scrollView}
+                <ScrollView style={[styles.scrollView, { marginTop: 20 }]}
                 >
                     {filteredControl.map((producto, index) => (
                         <Pressable
                             key={index}
-                            onPress={() => navigation.navigate('InformacionProducto', {
-                                id: producto.id < -1 ? producto.id_local : producto.id
-                            })}
                             style={({ pressed }) => {
                                 return { opacity: pressed ? 0 : 1 }
                             }}>
                             <View style={styles.containerinfo}>
                                 <View style={styles.contenedorTexto}>
-                                    <View style={styles.iconocirculo}>
-                                        <TouchableOpacity onPress={() => handleImagePress(FileSystem.documentDirectory + 'uploads/' + producto.foto)}>
-                                            <Image style={styles.imagenProducto} source={{ uri: FileSystem.documentDirectory + 'uploads/' + producto.foto + '?rand=' + Math.random() }} />
-                                        </TouchableOpacity>
-                                    </View>
                                     <View style={styles.textoinfo}>
                                         <Text style={styles.texto1}>{producto.material}</Text>
+                                        <Text style={styles.texto1}>{producto.codigo}</Text>
                                         <Text style={styles.texto2}>{producto.sede}</Text>
                                         <Text style={styles.texto2}>{producto.almacen}</Text>
-                                        <Text style={[styles.texto2, { color: '#313131' }]}>{producto.estado}</Text>
-                                        <Text style={[styles.texto2, { display: producto.serie ? 'block' : 'none' }]}>{producto.serie}</Text>
-                                        <Text style={[styles.texto2, { display: producto.modelo ? 'block' : 'none' }]}>{producto.modelo}</Text>
-                                        <Text style={[styles.texto2, { display: producto.marca ? 'block' : 'none' }]}>{producto.marca}</Text>
+                                        <Text style={styles.texto2}>{producto.serie}</Text>
+                                        <Text style={styles.texto2}>{producto.modelo}</Text>
+                                        <Text style={styles.texto2}>{producto.marca}</Text>
                                     </View>
                                 </View>
                                 <View style={styles.textoinfo}>
-                                    <Text style={[styles.texto1, styles.textoDerecha]}>{producto.conteo}</Text>
-                                    <Text style={[styles.texto2, styles.textoDerecha]}>{producto.codigo_inventario}</Text>
+                                    <Text style={[styles.texto1, styles.textoDerecha]}>{producto.cantidad}</Text>
+                                    <Text style={[styles.texto1, styles.textoDerecha]}>{producto.total ?? 0}</Text>
+                                    <Text style={[styles.texto1, styles.textoDerecha, { color: "red" }]}>{producto.cantidad - producto.total}</Text>
                                 </View>
                             </View>
                         </Pressable>
                     ))}
+                    <LoadingModal visible={loading} />
                 </ScrollView>
-                <LoadingModal visible={loading} />
-                <ImageViewer
-                    isVisible={isImageViewerVisible}
-                    onClose={() => setIsImageViewerVisible(false)}
-                    imageUri={selectedImageUri}
-                />
             </View>
-
-            <TouchableOpacity style={styles.floatingButton} onPress={() => navigation.navigate('Control')}>
-                <MaterialIcons name="task" size={24} color="white" />
-            </TouchableOpacity>
         </View>
     );
 }
@@ -287,8 +189,8 @@ const styles = StyleSheet.create({
     },
     viewStyle: {
         flex: 1,
-        marginTop: 40,
         backgroundColor: '#f1f1f1',
+        marginTop: 40,
     },
     /*----ESTILOS ENCABEZADO----*/
     encabezado: {
@@ -445,4 +347,3 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 });
-export default withNavigationFocus(ScreeInventario);

@@ -2,21 +2,20 @@ import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, Alert, Button, Dimensions, Pressable } from "react-native";
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import * as FileSystem from 'expo-file-system';
-const screenWidth = Dimensions.get('window').width;
 import LoadingModal from './LoadingModal';
-import { crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getEmplazamientoByIdSede, getInventarioById, getCountInventarioById, getAllInventarioFechaModificacion, eliminarTablas, updateNuevo } from "./db";
+import { crearInventarios, addInventario, addAlmacenes, addEstado, addSede, addUsuario, crearAlmacenes, crearEstado, crearSedes, crearUsuario, getCountInventario, getCountUsuarios, getCountAlmacenes, getCountSedes, getCountEstado, getCountInventarioById, getAllInventarioFechaModificacion, eliminarTablas, updateNuevo, crearControl, crearMateriales, crearUnidades, addUnidad, addMaterial, addControl, getCountUnidad } from "./db";
 
 export default () => {
-
     const [loading, setLoading] = useState(false);
-    const [show, setShow] = useState(true);
     const crearTablas = async () => {
-        await crearInventario();
+        await crearControl();
+        await crearMateriales();
+        await crearInventarios();
         await crearSedes();
-        await crearEmplazamiento();
+        await crearAlmacenes();
+        await crearUnidades();
         await crearUsuario();
         await crearEstado();
-        await crearClasificacion();
     }
     const upload = async () => {
         setLoading(true);
@@ -30,7 +29,6 @@ export default () => {
 
         setLoading(false);
         await mensajeExito('Subida Exitosa');
-        setShow(false);
     }
     const showConfirmationAlert = async () => {
         Alert.alert(
@@ -54,15 +52,16 @@ export default () => {
             await eliminarTablas();
             await crearTablas();
 
-            await fetchUsuariosFromAPI();
-            await fetchSedesFromAPI();
-            await fetchInventarioFromAPI();
-            await fetchClasificacion();
+            await fetchUsuarios();
+            await fetchSedes();
             await fetchEstado();
-            await fetchEmplazamientosFromAPI();
+            await fetchUnidades();
+            await fetchControles();
+            await fetchAlmacenes();
+            await fetchMateriales();
+            await fetchInventario();
             setLoading(false);
             await mensajeExito('Descarga Exitosa');
-            setShow(true);
         } catch (error) {
             console.error('Error al verificar si el archivo existe:', error);
             Alert.alert(
@@ -103,7 +102,7 @@ export default () => {
             return false;
         }
     };
-    const fetchUsuariosFromAPI = async () => {
+    const fetchUsuarios = async () => {
         try {
             const response = await fetch('https://inventarios.site/servicios/servicios.php?parAccion=lista_usuarios_emplazamiento');
             const data = await response.json();
@@ -133,31 +132,29 @@ export default () => {
             console.error('Error al obtener usuarios desde la API:', error);
         }
     };
-    const fetchEmplazamientosFromAPI = async () => {
+    const fetchAlmacenes = async () => {
         try {
-            const response = await fetch('https://inventarios.site/servicios/servicios.php?parAccion=lista_emplazamientos');
+            const response = await fetch('https://app.inventarios.site/servicios/servicios.php?parAccion=lista_almacenes');
             const data = await response.json();
 
             let flag = 0;
-            if (data.length > await getCountEmplazamiento()) {
+            if (data.length > await getCountAlmacenes()) {
                 flag = 1;
             }
             for (const emplazamiento of data) {
                 if (flag == 1) {
-                    await addEmplazamiento(
+                    await addAlmacenes(
                         [
                             emplazamiento.id,
                             emplazamiento.id_sede,
                             emplazamiento.codigo,
-                            emplazamiento.emplazamiento,
-                            emplazamiento.usuario_creacion,
-                            emplazamiento.fecha_creacion
+                            emplazamiento.almacen
                         ]
                     );
                 }
             }
         } catch (error) {
-            console.error('Error al obtener emplazamientos desde la API:', error);
+            console.error('Error al obtener almacenes desde la API:', error);
         }
     };
     async function enviarModificaciones() {
@@ -183,7 +180,7 @@ export default () => {
                         formData.append(key, producto[key]);
                     }
                 }
-                await fetch('https://inventarios.site/servicios/servicios.php?parAccion=sincronizar_inventario', {
+                await fetch('https://app.inventarios.site/servicios/servicios.php?parAccion=sincronizar_inventario', {
                     method: 'POST',
                     body: formData,
                 }).then(response => response.text())
@@ -198,14 +195,14 @@ export default () => {
             console.error('Error al enviar los datos:', error);
         }
     }
-    async function fetchInventarioFromAPI() {
+    async function fetchInventario() {
         var inventarios = [];
         const directoryInfo = await FileSystem.getInfoAsync(FileSystem.documentDirectory + 'uploads');
         if (!directoryInfo.exists) {
             await FileSystem.makeDirectoryAsync(FileSystem.documentDirectory + 'uploads', { intermediates: true });
         }
         try {
-            const response = await fetch('https://inventarios.site/servicios/servicios.php?parAccion=lista_inventario');
+            const response = await fetch('https://app.inventarios.site/servicios/servicios.php?parAccion=lista_inventario');
             const data = await response.json();
             inventarios = data;
             let flag = 0;
@@ -222,37 +219,25 @@ export default () => {
                         await addInventario(
                             [
                                 inventario.id,
-                                inventario.cuenta,
                                 inventario.id_sede,
-                                inventario.codigo_af,
-                                inventario.sap_padre,
-                                inventario.sap_comp,
-                                inventario.codigo_fisico,
-                                inventario.descripcion,
-                                inventario.marca,
-                                inventario.modelo,
-                                inventario.serie,
-                                inventario.medida,
-                                inventario.color,
-                                inventario.detalles,
-                                inventario.observaciones,
-                                inventario.otros,
-                                inventario.id_usuario,
-                                inventario.inventariador,
-                                inventario.id_clasificacion,
+                                inventario.id_almacen,
+                                inventario.id_material,
+                                inventario.conteo,
+                                inventario.reconteo,
+                                inventario.reconteo2,
+                                inventario.ubicacion,
                                 inventario.id_estado,
-                                inventario.usuario_creacion,
-                                inventario.fecha_creacion,
+                                inventario.observaciones,
+                                inventario.codigo_inventario,
                                 inventario.foto,
-                                inventario.id_emplazamiento,
-                                inventario.cantidad,
-                                inventario.unidad,
+                                inventario.fecha_creacion,
+                                inventario.id_usuario,
+                                inventario.control,
                                 inventario.sede,
                                 inventario.nombres,
-                                inventario.emplazamiento,
-                                inventario.clasificacion,
+                                inventario.almacen,
                                 inventario.estado,
-                                null,
+                                inventario.material,
                                 0
                             ]
                         );
@@ -291,7 +276,7 @@ export default () => {
 
     const fetchEstado = async () => {
         try {
-            const response = await fetch('https://inventarios.site/servicios/servicios.php?parAccion=lista_estados');
+            const response = await fetch('https://app.inventarios.site/servicios/servicios.php?parAccion=lista_estados');
             const data = await response.json();
 
             let flag = 0;
@@ -313,10 +298,98 @@ export default () => {
             console.error('Error al obtener estados desde la API:', error);
         }
     };
+    const fetchMateriales = async () => {
+        try {
+            const response = await fetch('https://app.inventarios.site/servicios/servicios.php?parAccion=lista_materiales');
+            const data = await response.json();
 
+            let flag = 0;
+            if (data.length > await getCountEstado()) {
+                flag = 1;
+            }
+
+            for (const material of data) {
+                if (flag == 1) {
+                    await addMaterial(
+                        [
+                            material.material,
+                            material.id_unidad,
+                            material.codigo,
+                            material.unidad
+                        ]
+                    );
+                }
+            }
+        } catch (error) {
+            console.error('Error al obtener materiales desde la API:', error);
+        }
+    }
+    const fetchControles = async () => {
+        try {
+            const response = await fetch('https://app.inventarios.site/servicios/servicios.php?parAccion=lista_controles');
+            const data = await response.json();
+
+            let flag = 0;
+            if (data.length > await getCountEstado()) {
+                flag = 1;
+            }
+
+            for (const control of data) {
+                if (flag == 1) {
+                    await addControl(
+                        [
+                            control.id,
+                            control.id_sede,
+                            control.id_almacen,
+                            control.id_material,
+                            control.cantidad,
+                            control.estado,
+                            control.conteo,
+                            control.reconteo,
+                            control.reconteo2,
+                            control.diferencia,
+                            control.sede,
+                            control.almacen,
+                            control.material,
+                            control.marca,
+                            control.modelo,
+                            control.serie,
+                            control.codigo
+                        ]
+                    );
+                }
+            }
+        } catch (error) {
+            console.error('Error al obtener control desde la API:', error);
+        }
+    }
+    const fetchUnidades = async () => {
+        try {
+            const response = await fetch('https://app.inventarios.site/servicios/servicios.php?parAccion=lista_unidades');
+            const data = await response.json();
+
+            let flag = 0;
+            if (data.length > await getCountUnidad()) {
+                flag = 1;
+            }
+
+            for (const unidad of data) {
+                if (flag == 1) {
+                    await addUnidad(
+                        [
+                            unidad.id,
+                            unidad.unidad
+                        ]
+                    );
+                }
+            }
+        } catch (error) {
+            console.error('Error al obtener unidades desde la API:', error);
+        }
+    };
     const downloadImage = async (foto) => {
         if (foto && foto != "null") {
-            const uri = 'https://inventarios.site/servicios/uploads/' + foto;
+            const uri = 'https://app.inventarios.site/servicios/uploads/' + foto;
             const fileUri = FileSystem.documentDirectory + 'uploads/' + foto;
 
             try {
@@ -327,9 +400,9 @@ export default () => {
             }
         }
     };
-    const fetchSedesFromAPI = async () => {
+    const fetchSedes = async () => {
         try {
-            const response = await fetch('https://inventarios.site/servicios/servicios.php?parAccion=lista_sedes');
+            const response = await fetch('https://app.inventarios.site/servicios/servicios.php?parAccion=lista_sedes');
             const data = await response.json();
             let flag = 0;
             if (data.length > await getCountSedes()) {
@@ -379,6 +452,7 @@ const styles = StyleSheet.create({
     },
     viewStyle: {
         flex: 1,
+        marginTop: 40,
         backgroundColor: '#f1f1f1',
     },
     /*----ESTILOS ENCABEZADO----*/

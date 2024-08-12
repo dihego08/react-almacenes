@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Image, Pressable, Text, ScrollView, TextInput, Alert, TouchableOpacity } from "react-native";
+import { StyleSheet, View, Image, Pressable, Text, ScrollView, TextInput, Alert, TouchableOpacity, Modal, Button } from "react-native";
 import { Picker } from '@react-native-picker/picker';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Camera, CameraView } from 'expo-camera';
@@ -9,6 +9,7 @@ import NetInfo from '@react-native-community/netinfo';
 import LoadingModal from './LoadingModal';
 import ImageViewer from "./ImageViewer";
 import * as ImageManipulator from 'expo-image-manipulator';
+import { BarCodeScanner } from 'expo-barcode-scanner';
 import {
     launchCameraAsync,
     useCameraPermissions,
@@ -17,40 +18,38 @@ import {
     PermissionStatus,
 } from 'expo-image-picker';
 import {
-    addInventario, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, updateInventario, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento, getAllDistinctUsuarios, getAllClasificacionNuevo
+    addInventario, getAllSedes, getAllAlmacenes, getAllEstado, getInventarioById, updateInventario, getSedeByID, getAlmacenByID, getEstadoByID, getUsuarioByIdIdEmplazamiento, getAllDistinctUsuarios, autocomplete, getFromControl, getMaterialById, buscarMedidor
 } from "./db";
 
 export default (props) => {
 
     const [sedes, setSedes] = useState([]);
     const [estados, setEstados] = useState([]);
-    const [clasificacion, setClasificacion] = useState([]);
     const [usuarios, setUsuarios] = useState([]);
-    const [emplazamientos, setEmplazamientos] = useState([]);
-    const [selectedEmplazamiento, setSelectedEmplazamiento] = useState(null);
+    const [id_material, setIdMaterial] = useState(null);
+    const [almacenes, setAlmacenes] = useState([]);
+    const [selectedAlmacen, setSelectedEmplazamiento] = useState(null);
     const [selectedSede, setSelectedSede] = useState(null);
     const [selectedEstado, setSelectedEstado] = useState(null);
-    const [selectedClasificacion, setSelectedClasificacion] = useState(null);
-    const [selectedDetalle, setSelectedDetalle] = useState(null);
     const [selectedUsuario, setSelectedUsuario] = useState(null);
     const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
     const [selectedImageUri, setSelectedImageUri] = useState(null);
-    const [cuenta, setCuenta] = useState(null);
-    const [codigo_af, setCodigoAF] = useState(null);
-    const [codigo_fisico, setCodigoFisico] = useState(null);
+    const [conteo, setConteo] = useState(null);
+    const [reconteo, setReconteo] = useState(null);
+    const [reconteo2, setReconteo2] = useState(null);
     const [descripcion, setDescripcion] = useState(null);
+    const [codigo, setCodigo] = useState(null);
+    const [serie, setSerie] = useState(null);
     const [marca, setMarca] = useState(null);
     const [modelo, setModelo] = useState(null);
-    const [serie, setSerie] = useState(null);
-    const [medida, setMedida] = useState(null);
 
     const [unidad, setUnidad] = useState(null);
-    const [cantidad, setCantidad] = useState(null);
-    const [color, setColor] = useState(null);
-    const [detalles, setDetalles] = useState(null);
+    const [cantidad, setCantidad] = useState(0);
     const [observaciones, setObservaciones] = useState(null);
     const [id, setId] = useState(null);
     const [foto, setFoto] = useState(null);
+    const [ubicacion, setUbicacion] = useState(null);
+    const [codigo_inventario, setcodigoInventario] = useState(null);
 
     const [photoUri, setPhotoUri] = useState(null);
     const [cameraRef, setCameraRef] = useState(null);
@@ -63,8 +62,12 @@ export default (props) => {
         useCameraPermissions();
     const [mediaLibraryPermissionInformation, requestMediaLibraryPermission] = useMediaLibraryPermissions();
 
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState([]);
+    const [scanned, setScanned] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false);
+
     useEffect(() => {
-        // Función para cargar las opciones desde la API
         const unsubscribe = NetInfo.addEventListener(async state => {
             setLoading(true);
             AsyncStorage.getItem('usuarioLogin').then((storedData) => {
@@ -76,10 +79,7 @@ export default (props) => {
             await fetchLocalSedes();
             await fetchLocalEstado();
             if (props.navigation.state.params.id != -1) {
-                await fetchLocalClasificacion(true);
                 await getData();
-            } else {
-                await fetchLocalClasificacion(false);
             }
 
             setLoading(false);
@@ -119,7 +119,6 @@ export default (props) => {
             }
             return permissionResponse.granted;
         }
-        //setShow(true);
         setPhotoUri(null);
         setFoto(null);
         return true;
@@ -141,6 +140,9 @@ export default (props) => {
             setFoto(nombre_foto);
             setPhotoUri(image.assets[0].uri);
         }
+    };
+    const abrirModal = () => {
+        setModalVisible(true); // Abre el modal cuando se presiona la imagen
     };
     const selectImageHandler = async () => {
         const hasPermission = await verifyMediaLibraryPermission();
@@ -177,37 +179,46 @@ export default (props) => {
             setEstados(storedEstado);
         }
     }
-    async function fetchLocalClasificacion(type) {
-        if (type) {
-            const storedClasificacion = await getAllClasificacion();
-            if (storedClasificacion) {
-                storedClasificacion.unshift({ id: 0, clasificacion: "--SELECCIONE--" });
-                setClasificacion(storedClasificacion);
-            }
+    const handleCodigoChange = async (value) => {
+        setCodigo(value);
+        setQuery(value);
+        if (value.length > 0) {
+            let resultado = await autocompletar(value);
+            setResults(resultado);
         } else {
-            const storedClasificacion = await getAllClasificacionNuevo();
-            if (storedClasificacion) {
-                setClasificacion(storedClasificacion);
-                setSelectedClasificacion(storedClasificacion[0].id);
-            }
+            setResults([]);
         }
-
+    }
+    const buscarPorSerie = async (value) => {
+        let resultado = await buscarMedidor(value);
+        console.log(resultado);
+        setDescripcion(resultado.material);
+        setUnidad(resultado.unidad);
+        setMarca(resultado.marca);
+        setQuery(resultado.codigo);
+        setCodigo(resultado.codigo);
+        setModelo(resultado.modelo);
+        setCantidad(resultado.cantidad);
+        setIdMaterial(resultado.id_material);
+        /*setSelectedSede(resultado.id_sede);
+        handleSedeChange(resultado.id_sede);
+        setSelectedEmplazamiento(resultado.id_almacen);
+        handleAlmacenChange(resultado.id_almacen);*/
+    }
+    async function autocompletar(query) {
+        return await autocomplete(query);
     }
     async function getData() {
         try {
-            let producto = await getInventarioById(props.navigation.state.params.id);//parsedProductos.filter(producto => producto.id == props.navigation.state.params.id);
+            let producto = await getInventarioById(props.navigation.state.params.id);
+            console.log(producto);
 
             if (producto) {
                 const la_sede = await getSedeByID(producto.id_sede);
-                const el_emplazamiento = await getEmplazamientoByID(producto.id_emplazamiento);
-
-                let id_remoto_usuario = 0;
-                if (producto.id_usuario == null || producto.id_usuario == 0) {
-
-                } else {
-                    const el_usuario = await getUsuarioByIdIdEmplazamiento(el_emplazamiento.id, producto.id_usuario);
-                    id_remoto_usuario = el_usuario.id_remoto;
-                }
+                const el_almacen = await getAlmacenByID(producto.id_almacen);
+                const el_material = await getMaterialById(producto.id_material);
+                console.log(el_material);
+                const el_control = await getFromControl(producto.id_sede, producto.id_almacen, producto.id_material);
 
                 if (producto.id_estado == 0 || producto.id_estado == '' || producto.id_estado == null || producto.id_estado == 'null') {
                     setSelectedEstado(0);
@@ -216,43 +227,33 @@ export default (props) => {
                     setSelectedEstado(el_estado.id);
                     handleEstadoChange(el_estado.id);
                 }
-                if (producto.id_clasificacion == 0 || producto.id_clasificacion == '' || producto.id_clasificacion == null || producto.id_clasificacion == 'null') {
-                    setSelectedClasificacion(0);
-                } else {
-                    const la_clasificacion = await getClasificacionByID(producto.id_clasificacion);
-                    setSelectedClasificacion(la_clasificacion.id);
-                    handleClasificacionChange(la_clasificacion.id);
-                }
 
                 setSelectedSede(la_sede.id);
                 handleSedeChange(la_sede.id);
-                setSelectedEmplazamiento(el_emplazamiento.id);
-                handleEmplazamientoChange(el_emplazamiento.id);
-                setSelectedUsuario(id_remoto_usuario);
-                handleUsuarioChange(id_remoto_usuario);
-                if (producto.detalles == "" || producto.detalles == null) {
-                    setSelectedDetalle(0);
-                    handleDetalleChange(0);
-                } else {
-                    setSelectedDetalle(producto.detalles);
-                    handleDetalleChange(producto.detalles);
-                }
+                setSelectedEmplazamiento(el_almacen.id);
+                handleAlmacenChange(el_almacen.id);
 
                 setId(producto.id);
-                setCuenta(producto.cuenta);
-                setCodigoAF(producto.codigo_af);
-                setCodigoFisico(producto.codigo_fisico);
-                setDescripcion(producto.descripcion);
-                setMarca(producto.marca);
-                setModelo(producto.modelo);
-                setSerie(producto.serie);
-                setMedida(producto.medida);
-                setUnidad(producto.unidad);
-                setCantidad(producto.cantidad);
-                setColor(producto.color);
-                //setDetalles(producto.detalles);
+                setCodigo(el_material.codigo);
+                setQuery(el_material.codigo);
+                setDescripcion(producto.material);
+                setUnidad(el_material.unidad);
+                if (el_control == null) {
+                    setCantidad(0);
+                } else {
+                    setCantidad(el_control.cantidad);
+                }
+                setConteo(producto.conteo);
+                setReconteo(producto.reconteo);
+                setIdMaterial(el_material.id);
+                setReconteo2(producto.reconteo2);
                 setObservaciones(producto.observaciones);
+                setUbicacion(producto.ubicacion);
+                setcodigoInventario(producto.codigo_inventario);
                 setFoto(producto.foto);
+                setModelo(producto.modelo);
+                setMarca(producto.marca);
+                setSerie(producto.serie);
             } else {
                 Alert.alert(
                     'Alerta',
@@ -278,21 +279,21 @@ export default (props) => {
         }
     }
 
-    async function fetchLocalEmplazamientosFromAPI(id_sede) {
-        const storedEmplazamientos = await getAllEmplazamientos();
-        if (storedEmplazamientos) {
-            storedEmplazamientos.unshift({ id: 0, emplazamiento: "--SELECCIONE--", id_sede: id_sede });
-            setEmplazamientos(storedEmplazamientos.filter(item => item.id_sede == id_sede));
+    async function fetchAlmacenes(id_sede) {
+        const storedAlmacenes = await getAllAlmacenes();
+        if (storedAlmacenes) {
+            storedAlmacenes.unshift({ id: 0, almacen: "--SELECCIONE--", id_sede: id_sede });
+            setAlmacenes(storedAlmacenes.filter(item => item.id_sede == id_sede));
         }
     }
 
-    const handleSedeChange = (value) => {
+    const handleSedeChange = async (value) => {
         if (value > 0) {
             setSelectedSede(value);
-            fetchLocalEmplazamientosFromAPI(value);
+            fetchAlmacenes(value);
         }
     };
-    const handleEmplazamientoChange = (value) => {
+    const handleAlmacenChange = (value) => {
         setSelectedEmplazamiento(value);
         if (value > 0) {
             fetchLocalUsuarios(value);
@@ -305,15 +306,6 @@ export default (props) => {
         setSelectedEstado(value);
     };
 
-    const handleClasificacionChange = (value) => {
-        setSelectedClasificacion(value);
-    };
-    const handleDetalleChange = (value) => {
-        setSelectedDetalle(value);
-    }
-    const handleUsuarioChange = (value) => {
-        setSelectedUsuario(value);
-    }
     const handlePhotoCapture = async (photoUri) => {
         try {
             // Ensure the 'uploads' directory exists
@@ -358,6 +350,20 @@ export default (props) => {
             }
         }
     };
+    const setValores = async (item) => {
+        setDescripcion(item.material);
+        setUnidad(item.unidad);
+        setCodigo(item.codigo);
+        setQuery(item.codigo);
+        setIdMaterial(item.id);
+        setResults([]);
+        let control = await getFromControl(selectedSede, selectedAlmacen, item.id);
+        if (control) {
+            setCantidad(control.cantidad);
+        } else {
+            setCantidad(0);
+        }
+    }
     const closeCamera = () => {
         setShow(false);
         setPhotoUri(null);
@@ -397,44 +403,15 @@ export default (props) => {
                 );
                 return;
             }
-            if ((selectedClasificacion == 1 || selectedClasificacion == 3) && ((fileName == null && (foto == "" || foto == null || foto == "null")) || selectedSede == 0
+
+            if ((selectedSede == 0
                 || selectedEstado == 0
-                || selectedClasificacion == 0
-                || selectedEmplazamiento == 0 || selectedSede == ""
+                || selectedAlmacen == 0 || selectedSede == ""
                 || selectedEstado == ""
-                || selectedClasificacion == ""
-                || selectedEmplazamiento == "")) {
+                || selectedAlmacen == "")) {
                 Alert.alert(
                     'Alerta',
-                    'Obligatorio: Foto, Sede, Emplazamiento, Estado, Clasificación, Usuario',
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => console.log('OK Pressed'),
-                        },
-                    ],
-                    { cancelable: false }
-                );
-                return;
-            }
-            if (selectedClasificacion == 2 && fileName != null) {
-                Alert.alert(
-                    'Alerta',
-                    'Producto NO UBICADO: No debería de tener foto.',
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => console.log('OK Pressed'),
-                        },
-                    ],
-                    { cancelable: false }
-                );
-                return;
-            }
-            if (selectedClasificacion == 0) {
-                Alert.alert(
-                    'Alerta',
-                    'No se ha seleccionado una Clasificación.',
+                    'Obligatorio:Sede, Almacen, Estado',
                     [
                         {
                             text: 'OK',
@@ -450,50 +427,39 @@ export default (props) => {
             let nombreUsuario = '';
             let nombreEstado = '';
             if (selectedUsuario > 0) {
-                const listaUsuario = await getUsuarioByIdIdEmplazamiento(selectedEmplazamiento, selectedUsuario);
+                const listaUsuario = await getUsuarioByIdIdEmplazamiento(selectedAlmacen, selectedUsuario);
                 nombreUsuario = listaUsuario.nombres;
             }
             if (selectedEstado > 0) {
                 const listaEstados = await getEstadoByID(selectedEstado);
                 nombreEstado = listaEstados.estado;
             }
-            const listaEmplazamientos = await getEmplazamientoByID(selectedEmplazamiento);
-            const listaClasificacion = await getClasificacionByID(selectedClasificacion);
+            const listaAlmacenes = await getAlmacenByID(selectedAlmacen);
 
             if (id) {
                 await updateInventario([
-                    cuenta,
                     selectedSede,
-                    codigo_af,
-                    null,
-                    null,
-                    codigo_fisico,
+                    selectedAlmacen,
+                    id_material,
+                    conteo,
+                    reconteo,
+                    reconteo2,
+                    ubicacion,
+                    selectedEstado,
+                    observaciones,
+                    codigo_inventario,
+                    foto,
+                    formatDate(Date.now()),
+                    inventariador,
+                    'control',
+                    listaSedes.sede,
+                    nombreUsuario,
+                    listaAlmacenes.almacen,
+                    nombreEstado,
                     descripcion,
                     marca,
                     modelo,
                     serie,
-                    medida,
-                    color,
-                    selectedDetalle,
-                    observaciones,
-                    null,
-                    selectedUsuario,
-                    inventariador,
-                    selectedClasificacion,
-                    selectedEstado,
-                    inventariador,
-                    null,
-                    foto,
-                    null,
-                    selectedEmplazamiento,
-                    formatDate(Date.now()),
-                    cantidad,
-                    unidad,
-                    listaSedes.sede,
-                    nombreUsuario,
-                    listaEmplazamientos.emplazamiento,
-                    listaClasificacion.clasificacion,
-                    nombreEstado,
                     id
                 ]);
                 Alert.alert(
@@ -511,39 +477,31 @@ export default (props) => {
                 await addInventario(
                     [
                         null,
-                        cuenta,
                         selectedSede,
-                        codigo_af,
-                        null,
-                        null,
-                        codigo_fisico,
-                        descripcion,
-                        marca,
-                        modelo,
-                        serie,
-                        medida,
-                        color,
-                        selectedDetalle,
-                        observaciones,
-                        null,
-                        selectedUsuario,
-                        inventariador,
-                        selectedClasificacion,
+                        selectedAlmacen,
+                        id_material,
+                        conteo,
+                        reconteo,
+                        reconteo2,
+                        ubicacion,
                         selectedEstado,
-                        inventariador,
-                        formatDate(Date.now()),
+                        observaciones,
+                        codigo_inventario,
                         foto,
-                        selectedEmplazamiento,
-                        cantidad,
-                        unidad,
+                        formatDate(Date.now()),
+                        inventariador,
+                        'control',
                         listaSedes.sede,
                         nombreUsuario,
-                        listaEmplazamientos.emplazamiento,
-                        listaClasificacion.clasificacion,
+                        listaAlmacenes.almacen,
                         nombreEstado,
-                        null,
-                        '1'
-                    ]);
+                        descripcion,
+                        1,
+                        marca,
+                        modelo,
+                        serie
+                    ]
+                );
                 Alert.alert(
                     'Éxito',
                     'Guardado Localmente',
@@ -555,6 +513,8 @@ export default (props) => {
                     ],
                     { cancelable: false }
                 );
+
+                props.navigation.goBack();
             }
         } catch (error) {
             Alert.alert(
@@ -572,6 +532,14 @@ export default (props) => {
         }
     };
 
+    const handleBarCodeScanned = ({ type, data }) => {
+        setScanned(true);
+        //setQuery(data);
+        setSerie(data);
+        //handleCodigoChange(data);
+        buscarPorSerie(data);
+        setModalVisible(false);
+    };
     return (
         <View style={styles.viewStyle}>
             <View style={styles.encabezado}>
@@ -638,16 +606,6 @@ export default (props) => {
                 <ScrollView style={styles.scrollView}>
                     <View style={styles.action}>
                         <View style={styles.action2}>
-                            <Text style={styles.label}>Cuenta:</Text>
-                            <TextInput
-                                placeholder="Cuenta"
-                                placeholderTextColor="#B2BABB"
-                                style={styles.textInput}
-                                value={cuenta ? cuenta : ''}
-                                onChangeText={text => setCuenta(text)}
-                            />
-                        </View>
-                        <View style={styles.action2}>
                             <Text style={styles.label}>Sede:</Text>
                             <Picker
                                 selectedValue={selectedSede}
@@ -659,67 +617,129 @@ export default (props) => {
                                 ))}
                             </Picker>
                         </View>
+                        <View style={styles.action2}>
+                            <Text style={styles.label}>Almacén:</Text>
+                            <Picker
+                                selectedValue={selectedAlmacen}
+                                onValueChange={handleAlmacenChange}
+                                style={styles.textInput}
+                            >
+                                {almacenes.map((item) => (
+                                    <Picker.Item style={{ fontSize: 12 }} key={item.id} label={item.almacen} value={item.id} />
+                                ))}
+                            </Picker>
+                        </View>
+                    </View>
+
+                    <View style={styles.action}>
+
+                        <View style={styles.action3}>
+                            <Text style={styles.label}>Código Material:</Text>
+                            <View style={styles.action}>
+                                <TextInput
+                                    placeholder="Código Material"
+                                    placeholderTextColor="#B2BABB"
+                                    style={[styles.textInput, { width: '100%' }]}
+                                    value={query}
+                                    onChangeText={handleCodigoChange}
+                                />
+                                <View style={styles.iconocirculobusca}>
+                                    <Pressable
+                                        onPress={abrirModal}
+                                        style={({ pressed }) => {
+                                            return { opacity: pressed ? 0 : 1 }
+                                        }}>
+                                        <Image style={styles.iconosbusca} resizeMode="contain" source={require('../assets/imgs/barcode.png')} />
+                                    </Pressable>
+                                </View>
+                            </View>
+                            <ScrollView style={styles.scrollView}>
+                                {results.map(item => (
+                                    <Pressable
+                                        key={item.id}
+                                        onPress={() => setValores(item)}
+                                        style={({ pressed }) => {
+                                            return { opacity: pressed ? 0 : 1 }
+                                        }}>
+                                        <View key={item.id} style={styles.resultItem}>
+                                            <Text><Text style={styles.bold}>{item.codigo}</Text> {item.material}</Text>
+                                        </View>
+                                    </Pressable>
+                                ))}
+                            </ScrollView>
+                        </View>
                     </View>
                     <View style={styles.action}>
-                        <View style={styles.action2}>
-                            <Text style={styles.label}>Cantidad:</Text>
+                        <View style={styles.action3}>
+                            <Text style={styles.label}>Descripción:</Text>
                             <TextInput
-                                placeholder="Cantidad"
+                                placeholder="Descripción"
                                 placeholderTextColor="#B2BABB"
-                                style={styles.textInput}
-                                value={cantidad ? cantidad : ''}
-                                onChangeText={text => setCantidad(text)}
+                                style={[styles.textInput, { color: "#000000", fontWeight: "bold" }]}
+                                value={descripcion ? descripcion : ''}
+                                editable={false}
+                                onChangeText={text => setDescripcion(text)}
                             />
                         </View>
+                    </View>
+                    <View style={styles.action}>
                         <View style={styles.action2}>
                             <Text style={styles.label}>Unidad:</Text>
                             <TextInput
                                 placeholder="Unidad"
                                 placeholderTextColor="#B2BABB"
-                                style={styles.textInput}
+                                style={[styles.textInput, { color: "#000000", fontWeight: "bold" }]}
                                 value={unidad ? unidad : ''}
+                                editable={false}
                                 onChangeText={text => setUnidad(text)}
                             />
                         </View>
-                    </View>
-                    <View style={styles.action}>
-                        <View style={styles.action3}>
-                            <Text style={styles.label}>Emplazamiento:</Text>
-                            <Picker
-                                selectedValue={selectedEmplazamiento}
-                                onValueChange={handleEmplazamientoChange}
-                                style={styles.textInput}
-                            >
-                                {emplazamientos.map((item) => (
-                                    <Picker.Item style={{ fontSize: 12 }} key={item.id} label={item.emplazamiento} value={item.id} />
-                                ))}
-                            </Picker>
+                        <View style={styles.action2}>
+                            <Text style={styles.label}>Cantidad:</Text>
+                            <TextInput
+                                placeholder="Cantidad"
+                                placeholderTextColor="#B2BABB"
+                                style={[styles.textInput, { color: "#000000", fontWeight: "bold" }]}
+                                value={cantidad ? cantidad : ''}
+                                editable={false}
+                                onChangeText={text => setCantidad(text)}
+                            />
                         </View>
                     </View>
                     <View style={styles.action}>
                         <View style={styles.action2}>
-                            <Text style={styles.label}>Código AF:</Text>
+                            <Text style={styles.label}>Conteo:</Text>
                             <TextInput
-                                placeholder="Código AF"
+                                placeholder="Conteo"
                                 placeholderTextColor="#B2BABB"
                                 style={styles.textInput}
-                                value={codigo_af ? codigo_af : ''}
-                                onChangeText={text => setCodigoAF(text)}
+                                value={conteo ? conteo : ''}
+                                onChangeText={text => setConteo(text)}
                             />
                         </View>
                         <View style={styles.action2}>
-                            <Text style={styles.label}>Código Físico:</Text>
+                            <Text style={styles.label}>Reconteo 1:</Text>
                             <TextInput
-                                placeholder="Código Físico"
+                                placeholder="Reconteo 1"
                                 placeholderTextColor="#B2BABB"
                                 style={styles.textInput}
-                                value={codigo_fisico ? codigo_fisico : ''}
-                                onChangeText={text => setCodigoFisico(text)}
+                                value={reconteo ? reconteo : ''}
+                                onChangeText={text => setReconteo(text)}
                             />
                         </View>
                     </View>
 
                     <View style={styles.action}>
+                        <View style={styles.action2}>
+                            <Text style={styles.label}>Reconteo 2:</Text>
+                            <TextInput
+                                placeholder="Reconteo 2"
+                                placeholderTextColor="#B2BABB"
+                                style={styles.textInput}
+                                value={reconteo2 ? reconteo2 : ''}
+                                onChangeText={text => setReconteo2(text)}
+                            />
+                        </View>
                         <View style={styles.action2}>
                             <Text style={styles.label}>Estado:</Text>
                             <Picker
@@ -732,32 +752,8 @@ export default (props) => {
                                 ))}
                             </Picker>
                         </View>
-                        <View style={styles.action2}>
-                            <Text style={styles.label}>Responsable:</Text>
-                            <Picker
-                                selectedValue={selectedUsuario}
-                                onValueChange={handleUsuarioChange}
-                                style={styles.textInput}
-                            >
-                                {usuarios.map((usuario) => (
-                                    <Picker.Item style={{ fontSize: 12 }} key={usuario.id_remoto} label={usuario.nombres} value={usuario.id_remoto} />
-                                ))}
-                            </Picker>
-                        </View>
                     </View>
 
-                    <View style={styles.action}>
-                        <View style={styles.action3}>
-                            <Text style={styles.label}>Descripción:</Text>
-                            <TextInput
-                                placeholder="Descripción"
-                                placeholderTextColor="#B2BABB"
-                                style={styles.textInput}
-                                value={descripcion ? descripcion : ''}
-                                onChangeText={text => setDescripcion(text)}
-                            />
-                        </View>
-                    </View>
                     <View style={styles.action}>
                         <View style={styles.action2}>
                             <Text style={styles.label}>Marca:</Text>
@@ -780,7 +776,7 @@ export default (props) => {
                             />
                         </View>
                     </View>
-                    <View style={styles.action}>
+                    {/*<View style={styles.action}>
                         <View style={styles.action2}>
                             <Text style={styles.label}>Serie:</Text>
                             <TextInput
@@ -801,8 +797,8 @@ export default (props) => {
                                 onChangeText={text => setMedida(text)}
                             />
                         </View>
-                    </View>
-                    <View style={styles.action}>
+                    </View>*/}
+                    {/*<View style={styles.action}>
                         <View style={styles.action2}>
                             <Text style={styles.label}>Color:</Text>
                             <TextInput
@@ -813,39 +809,41 @@ export default (props) => {
                                 onChangeText={text => setColor(text)}
                             />
                         </View>
-                        <View style={styles.action2}>
-                            <Text style={styles.label}>Clasificación:</Text>
-                            <Picker
-                                selectedValue={selectedClasificacion}
-                                onValueChange={handleClasificacionChange}
+                    </View>*/}
+                    <View style={styles.action}>
+                        <View style={styles.action3}>
+                            <Text style={styles.label}>Serie:</Text>
+                            <TextInput
+                                placeholder="Serie"
+                                placeholderTextColor="#B2BABB"
                                 style={styles.textInput}
-                            >
-                                {clasificacion.map((option) => (
-                                    <Picker.Item style={{ fontSize: 12 }} key={option.id} label={option.clasificacion} value={option.id} />
-                                ))}
-                            </Picker>
+                                value={serie ? serie : ''}
+                                onChangeText={text => setSerie(text)}
+                            />
                         </View>
                     </View>
                     <View style={styles.action}>
                         <View style={styles.action3}>
-                            <Text style={styles.label}>Detalles:</Text>
-                            {/*<TextInput
-                                placeholder="Detalles"
+                            <Text style={styles.label}>Ubicación:</Text>
+                            <TextInput
+                                placeholder="Ubicación"
                                 placeholderTextColor="#B2BABB"
                                 style={styles.textInput}
-                                value={detalles ? detalles : ''}
-                                onChangeText={text => setDetalles(text)}
-                            />*/}
-
-                            <Picker
-                                selectedValue={selectedDetalle}
-                                onValueChange={handleDetalleChange}
+                                value={ubicacion ? ubicacion : ''}
+                                onChangeText={text => setUbicacion(text)}
+                            />
+                        </View>
+                    </View>
+                    <View style={styles.action}>
+                        <View style={styles.action3}>
+                            <Text style={styles.label}>Código Inventario:</Text>
+                            <TextInput
+                                placeholder="Código Inventario"
+                                placeholderTextColor="#B2BABB"
                                 style={styles.textInput}
-                            >
-                                <Picker.Item style={{ fontSize: 12 }} key='0' label='--DETALLE--' value='0' />
-                                <Picker.Item style={{ fontSize: 12 }} key='OPERATIVO' label='OPERATIVO' value='OPERATIVO' />
-                                <Picker.Item style={{ fontSize: 12 }} key='INOPERATIVO' label='INOPERATIVO' value='INOPERATIVO' />
-                            </Picker>
+                                value={codigo_inventario ? codigo_inventario : ''}
+                                onChangeText={text => setcodigoInventario(text)}
+                            />
                         </View>
                     </View>
                     <View style={styles.action}>
@@ -863,12 +861,32 @@ export default (props) => {
                 </ScrollView>
                 <LoadingModal visible={loading} />
             </View>
+
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={modalVisible}
+                onRequestClose={() => {
+                    setModalVisible(false);
+                }}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.cameraContainer}>
+                        <BarCodeScanner
+                            onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+                            style={styles.camera2}
+                        />
+                        <Button title="Cerrar" style={styles.closeButton} onPress={() => setModalVisible(false)} />
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
 const styles = StyleSheet.create({
     viewStyle: {
         flex: 1,
+        marginTop: 40,
         backgroundColor: '#f1f1f1',
     },
     row: {
@@ -897,7 +915,9 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
     },
-
+    bold: {
+        fontWeight: 'bold'
+    },
     texto1: {
         color: '#0000CC',
         fontSize: 15,
@@ -1028,5 +1048,53 @@ const styles = StyleSheet.create({
     },
     label: {
         color: '#0000CC',
+    },
+    resultItem: {
+        padding: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: 'gray',
+    },
+    iconocirculobusca: {
+        height: 30,
+        width: 30,
+        backgroundColor: '#0000CC',
+        alignSelf: 'center',
+        borderRadius: 8,
+        elevation: 10,
+        padding: 5,
+        marginLeft: 10,
+        marginTop: 3,
+    },
+    iconosbusca: {
+        padding: 5,
+        marginRight: 3,
+        width: '100%',
+        height: '100%',
+        color: '#fff',
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    cameraContainer: {
+        width: '90%',
+        height: '90%',
+        // backgroundColor: 'white',
+        borderRadius: 10,
+        overflow: 'hidden',
+    },
+    camera2: {
+        width: '100%',
+        height: '90%',
+    },
+    closeButton: {
+        position: 'absolute',
+        top: 40,
+        right: 20,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        padding: 10,
+        borderRadius: 50,
     }
 });

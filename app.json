@@ -4,7 +4,7 @@
     "slug": "almacenes",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/imgs/logoeg.png",
+    "icon": "./assets/imgs/img.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
@@ -19,7 +19,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/imgs/logoeg.png",
+        "foregroundImage": "./assets/imgs/img.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [

@@ -64,7 +64,7 @@ export default class m_propietario extends Component {
                 <View style={styles.container}>
 
                     <View style={styles.imagelogox2}>
-                        <Image style={styles.imagelogo} source={require('../assets/imgs/logoeg.png')} />
+                        <Image style={styles.imagelogo} source={require('../assets/imgs/img.png')} />
                     </View>
 
                     <View style={styles.menu}>
@@ -75,13 +75,13 @@ export default class m_propietario extends Component {
                             }}>
                             <Image style={styles.imageboton} source={require('../assets/imgs/menu_catalogo.png')} />
                         </Pressable>
-                        <Pressable
+                        {/*<Pressable
                             onPress={() => navigate('ExportarReporte')}
                             style={({ pressed }) => {
                                 return { opacity: pressed ? 0 : 1 }
                             }}>
                             <Image style={styles.imageboton} source={require('../assets/imgs/menu_reporte.png')} />
-                        </Pressable>
+                        </Pressable>*/}
                     </View>
                     <View style={styles.menu}>
                         <Pressable
@@ -110,6 +110,7 @@ export default class m_propietario extends Component {
 const styles = StyleSheet.create({
     viewStyle: {
         flex: 1,
+        marginTop: 40,
         backgroundColor: '#f1f1f1',
     },
     /*----ESTILOS ENCABEZADO----*/

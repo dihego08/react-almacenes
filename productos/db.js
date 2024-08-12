@@ -1,5 +1,4 @@
 import * as SQLite from 'expo-sqlite';
-import { useEffect } from 'react';
 
 const db = SQLite.openDatabaseSync('database.db');
 
@@ -10,52 +9,77 @@ async function configureDatabase() {
 
 async function eliminarTablas() {
     await db.execAsync(
-        `DROP TABLE inventario;
-        DROP TABLE clasificacion;
+        `DROP TABLE inventarios;
         DROP TABLE estados;
         DROP TABLE sedes;
-        DROP TABLE emplazamiento;
-        DROP TABLE usuarios;`
+        DROP TABLE almacenes;
+        DROP TABLE usuarios;
+        DROP TABLE control;
+        DROP TABLE unidades;
+        DROP TABLE materiales;`
     );
 }
-async function crearInventario() {
+async function crearControl() {
+    await db.execAsync(`CREATE TABLE IF NOT EXISTS control (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_sede TEXT,
+        id_almacen TEXT,
+        id_material TEXT,
+        cantidad TEXT,
+        estado TEXT,
+        conteo TEXT,
+        reconteo TEXT,
+        reconteo2 TEXT,
+        diferencia TEXT,
+        sede TEXT,
+        almacen TEXT,
+        material TEXT,
+        marca TEXT,
+        modelo TEXT,
+        serie TEXT,
+        codigo TEXT
+    );`);
+}
+async function crearInventarios() {
     // Crea la tabla si no existe
     await db.execAsync(
-        `CREATE TABLE IF NOT EXISTS inventario (
+        `CREATE TABLE IF NOT EXISTS inventarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cuenta TEXT,
             id_sede TEXT,
-            codigo_af TEXT,
-            sap_padre TEXT,
-            sap_comp TEXT,
-            codigo_fisico TEXT,
-            descripcion TEXT,
-            marca TEXT,
-            modelo TEXT,
-            serie TEXT,
-            medida TEXT,
-            color TEXT,
-            detalles TEXT,
-            observaciones TEXT,
-            otros TEXT,
-            id_usuario TEXT,
-            inventariador TEXT,
-            id_clasificacion TEXT,
+            id_almacen TEXT,
+            id_material TEXT,
+            conteo TEXT,
+            reconteo TEXT,
+            reconteo2 TEXT,
+            ubicacion TEXT,
             id_estado TEXT,
-            usuario_creacion TEXT,
-            fecha_creacion TEXT,
+            observaciones TEXT,
+            codigo_inventario TEXT,
             foto TEXT,
-            cod_inventario TEXT,
-            id_emplazamiento TEXT,
+            fecha_creacion TEXT,
             fecha_modificacion TEXT,
-            cantidad TEXT,
-            unidad TEXT,
+            id_usuario TEXT,
+            control TEXT,
             sede TEXT,
             nombres TEXT,
-            emplazamiento TEXT,
-            clasificacion TEXT,
+            almacen TEXT,
             estado TEXT,
-            nuevo TEXT
+            material TEXT,
+            nuevo TEXT,
+            marca TEXT,
+            modelo TEXT,
+            serie TEXT
+        )`
+    );
+}
+async function crearMateriales() {
+    await db.execAsync(
+        `CREATE TABLE IF NOT EXISTS materiales (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo TEXT,
+            material TEXT,
+            id_unidad TEXT,
+            unidad TEXT
         )`
     );
 }
@@ -64,21 +88,17 @@ async function crearSedes() {
         `CREATE TABLE IF NOT EXISTS sedes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             codigo TEXT,
-            sede TEXT,
-            usuario_creacion INTEGER,
-            fecha_creacion TEXT
+            sede TEXT
         )`
     );
 }
-async function crearEmplazamiento() {
+async function crearAlmacenes() {
     await db.execAsync(
-        `CREATE TABLE IF NOT EXISTS emplazamiento (
+        `CREATE TABLE IF NOT EXISTS almacenes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             id_sede INTEGER,
             codigo TEXT,
-            emplazamiento TEXT,
-            usuario_creacion INTEGER,
-            fecha_creacion TEXT
+            almacen TEXT
         )`
     );
 }
@@ -94,7 +114,15 @@ async function crearUsuario() {
             fecha_creacion TEXT,
             usuario_creacion TEXT,
             nivel INTEGER,
-            id_emplazamiento INTEGER
+            id_almacen INTEGER
+        )`
+    );
+}
+async function crearUnidades() {
+    await db.execAsync(
+        `CREATE TABLE IF NOT EXISTS unidades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            unidad TEXT
         )`
     );
 }
@@ -114,68 +142,68 @@ async function crearClasificacion() {
         )`
     );
 }
+async function addMaterial(data) {
+    const result = await db.runAsync(`INSERT INTO materiales(material, id_unidad, codigo, unidad) VALUES (?, ?, ?, ?)`, data);
+}
 async function addInventario(data) {
-    const result = await db.runAsync(`INSERT INTO inventario (
-        id, 
-        cuenta,
+    const result = await db.runAsync(`INSERT INTO inventarios (
+        id,
         id_sede,
-        codigo_af,
-        sap_padre,
-        sap_comp,
-        codigo_fisico,
-        descripcion,
-        marca,
-        modelo,
-        serie,
-        medida,
-        color,
-        detalles,
-        observaciones,
-        otros,
-        id_usuario,
-        inventariador,
-        id_clasificacion,
+        id_almacen,
+        id_material,
+        conteo,
+        reconteo,
+        reconteo2,
+        ubicacion,
         id_estado,
-        usuario_creacion,
-        fecha_creacion,
+        observaciones,
+        codigo_inventario,
         foto,
-        id_emplazamiento,
-        cantidad,
-        unidad,
+        fecha_creacion,
+        id_usuario,
+        control,
         sede,
         nombres,
-        emplazamiento,
-        clasificacion,
+        almacen,
         estado,
-        fecha_modificacion,
-        nuevo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, data);
+        material,
+        nuevo,
+        marca,
+        modelo,
+        serie) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, data);
     return result.lastInsertRowId;
 };
 async function addClasificacion(data) {
-    const result = await db.runAsync(`INSERT INTO clasificacion(id, clasificacion) VALUES (?, ?);`, data);
+    await db.runAsync(`INSERT INTO clasificacion(id, clasificacion) VALUES (?, ?);`, data);
 }
 async function addEstado(data) {
-    const result = await db.runAsync(`INSERT INTO estados(id, estado) VALUES (?, ?)`, data);
+    await db.runAsync(`INSERT INTO estados(id, estado) VALUES (?, ?)`, data);
+}
+async function addControl(data) {
+    await db.runAsync(`INSERT INTO control(id, id_sede, id_almacen, id_material, cantidad, estado, conteo, reconteo, reconteo2, diferencia, sede, almacen, material, marca, modelo, serie, codigo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, data);
+}
+async function addUnidad(data) {
+    await db.runAsync(`INSERT INTO unidades(id, unidad) VALUES (?, ?)`, data);
 }
 async function addSede(data) {
-    const result = await db.runAsync(`INSERT INTO sedes(id, codigo, sede, usuario_creacion, fecha_creacion) VALUES (?, ?, ?, ?, ?)`, data);
+    await db.runAsync(`INSERT INTO sedes(id, codigo, sede) VALUES (?, ?, ?)`, data);
 }
-async function addEmplazamiento(data) {
-    const result = await db.runAsync(`INSERT INTO emplazamiento(id, id_sede, codigo, emplazamiento, usuario_creacion, fecha_creacion) VALUES (?, ?, ?, ?, ?, ?)`, data);
+async function addAlmacenes(data) {
+    await db.runAsync(`INSERT INTO almacenes(id, id_sede, codigo, almacen) VALUES (?, ?, ?, ?)`, data);
 }
 async function addUsuario(data) {
-    const result = await db.runAsync(`INSERT INTO usuarios(id_remoto, codigo, nombres, user, pass, fecha_creacion, usuario_creacion, nivel, id_emplazamiento) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, data);
+    await db.runAsync(`INSERT INTO usuarios(id_remoto, codigo, nombres, user, pass, fecha_creacion, usuario_creacion, nivel, id_almacen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, data);
 }
 async function getCountInventario() {
-    const firstRow = await db.getFirstAsync('SELECT COUNT(*) AS cant FROM inventario;');
+    const firstRow = await db.getFirstAsync('SELECT COUNT(*) AS cant FROM inventarios;');
     return firstRow.cant;
 }
 async function getCountUsuarios() {
     const firstRow = await db.getFirstAsync('SELECT COUNT(*) AS cant FROM usuarios;');
     return firstRow.cant;
 }
-async function getCountEmplazamiento() {
-    const firstRow = await db.getFirstAsync('SELECT COUNT(*) AS cant FROM emplazamiento;');
+async function getCountAlmacenes() {
+    const firstRow = await db.getFirstAsync('SELECT COUNT(*) AS cant FROM almacenes;');
     return firstRow.cant;
 }
 async function getCountSedes() {
@@ -190,12 +218,32 @@ async function getCountEstado() {
     const firstRow = await db.getFirstAsync('SELECT COUNT(*) AS cant FROM estados;');
     return firstRow.cant;
 }
+async function getCountUnidad() {
+    const firstRow = await db.getFirstAsync('SELECT COUNT(*) AS cant FROM unidades;');
+    return firstRow.cant;
+}
 async function getCountInventarioById(id) {
-    const firstRow = await db.getFirstAsync('SELECT COUNT(*) AS cant FROM inventario WHERE id = ?;', id);
+    const firstRow = await db.getFirstAsync('SELECT COUNT(*) AS cant FROM inventarios WHERE id = ?;', id);
     return firstRow.cant;
 }
 async function getAllInventario() {
-    const allRows = await db.getAllAsync('SELECT * FROM inventario ORDER BY descripcion ASC');
+    const allRows = await db.getAllAsync('SELECT * FROM inventarios ORDER BY material ASC');
+    return allRows;
+}
+async function getAllControl() {
+    const allRows = await db.getAllAsync('SELECT * FROM control ORDER BY material ASC');
+    return allRows;
+}
+async function getAllControlParams(id_sede, id_almacen) {
+    let str = '';
+    if (id_almacen == 0 || id_almacen == "") {
+        //str = `SELECT * FROM control WHERE id_sede = ${id_sede} ORDER BY material ASC`;
+        str = `SELECT *, total FROM control c LEFT JOIN (SELECT sum(conteo) total, id_material, id_sede, id_almacen from inventarios GROUP BY id_sede, id_almacen, id_material) aux ON aux.id_sede = c.id_sede and aux.id_almacen = c.id_almacen AND aux.id_material = c.id_material WHERE c.id_sede = ${id_sede} ORDER BY c.material ASC; `;
+    } else {
+        // str = `SELECT * FROM control WHERE id_sede = ${id_sede} AND id_almacen = ${id_almacen} ORDER BY material ASC`;
+        str = `SELECT *, total FROM control c LEFT JOIN (SELECT sum(conteo) total, id_material, id_sede, id_almacen from inventarios GROUP BY id_sede, id_almacen, id_material) aux ON aux.id_sede = c.id_sede and aux.id_almacen = c.id_almacen AND aux.id_material = c.id_material WHERE c.id_sede = ${id_sede} AND c.id_almacen = ${id_almacen} ORDER BY c.material ASC; `;
+    }
+    const allRows = await db.getAllAsync(str);
     return allRows;
 }
 async function getAllUsuarios() {
@@ -218,7 +266,7 @@ async function getEstadoByID(id) {
     const firstRow = await db.getFirstAsync('SELECT * FROM estados WHERE id = ?', id);
     return firstRow;
 }
-async function getUsuarioByIdIdEmplazamiento(id_emplazamiento, id) {
+async function getUsuarioByIdIdAlmacen(id_almacen, id) {
     const firstRow = await db.getFirstAsync('SELECT distinct * FROM usuarios WHERE id_remoto = ?', [id]);
     return firstRow;
 }
@@ -226,16 +274,16 @@ async function getClasificacionByID(id) {
     const firstRow = await db.getFirstAsync('SELECT * FROM clasificacion WHERE id = ?', id);
     return firstRow;
 }
-async function getEmplazamientoByID(id) {
-    const firstRow = await db.getFirstAsync('SELECT * FROM emplazamiento WHERE id = ?', id);
+async function getAlmacenByID(id) {
+    const firstRow = await db.getFirstAsync('SELECT * FROM almacenes WHERE id = ?', id);
     return firstRow;
 }
-async function getAllEmplazamientos() {
-    const allRows = await db.getAllAsync('SELECT * FROM emplazamiento ORDER BY emplazamiento ASC');
+async function getAllAlmacenes() {
+    const allRows = await db.getAllAsync('SELECT * FROM almacenes ORDER BY almacen ASC');
     return allRows;
 }
-async function getEmplazamientoByIdSede(id_sede) {
-    const allRows = await db.getAllAsync('SELECT * FROM emplazamiento WHERE id_sede = ? ORDER BY emplazamiento ASC', id_sede);
+async function getAlmacenByIdSede(id_sede) {
+    const allRows = await db.getAllAsync('SELECT * FROM almacenes WHERE id_sede = ? ORDER BY almacen ASC', id_sede);
     return allRows;
 }
 async function getAllEstado() {
@@ -255,33 +303,48 @@ async function getAllClasificacionEditar() {
     return allRows;
 }
 async function getInventarioById(id_inventario) {
-    const firstRow = await db.getFirstAsync('SELECT * FROM inventario WHERE id = ?;', [id_inventario]);
+    const firstRow = await db.getFirstAsync('SELECT * FROM inventarios WHERE id = ?;', [id_inventario]);
     return firstRow;
 }
 async function getInventarioByIdLocal(id_inventario) {
-    const firstRow = await db.getFirstAsync('SELECT * FROM inventario WHERE id_local = ?;', [id_inventario]);
+    const firstRow = await db.getFirstAsync('SELECT * FROM inventarios WHERE id_local = ?;', [id_inventario]);
     return firstRow;
 }
 async function updateInventario(data) {
-    const result = await db.runAsync(`UPDATE inventario SET cuenta=?,id_sede=?,codigo_af=?,sap_padre=?,sap_comp=?,codigo_fisico=?,descripcion=?,marca=?,modelo=?,serie=?,medida=?,color=?,detalles=?,observaciones=?,otros=?,id_usuario=?,inventariador=?,id_clasificacion=?,id_estado=?,usuario_creacion=?,fecha_creacion=?,foto=?,cod_inventario=?,id_emplazamiento=?,fecha_modificacion=?,cantidad=?,unidad=?, sede = ?,
+    const result = await db.runAsync(`UPDATE inventarios SET id_sede=?,id_almacen=?,id_material=?,conteo=?,reconteo=?,reconteo2=?,ubicacion=?,id_estado=?,observaciones=?,codigo_inventario=?,foto=?,fecha_modificacion=?,id_usuario=?,control=?, sede = ?,
 nombres = ?,
-emplazamiento = ?,
-clasificacion = ?,
-estado = ? WHERE id = ?`, data);
+almacen = ?,
+estado = ?,
+material = ?,
+marca = ?,
+modelo = ?,
+serie = ? WHERE id = ?`, data);
 }
 async function updateNuevo(id) {
-    const result = await db.runAsync(`UPDATE inventario SET nuevo = 0 WHERE id = ?`, id);
+    const result = await db.runAsync(`UPDATE inventarios SET nuevo = 0 WHERE id = ?`, id);
 }
 async function getAllInventarioFechaModificacion() {
-    const allRows = await db.getAllAsync('SELECT * FROM inventario WHERE fecha_modificacion IS NOT NULL OR nuevo = 1');
+    const allRows = await db.getAllAsync('SELECT * FROM inventarios WHERE fecha_modificacion IS NOT NULL OR nuevo = 1');
     return allRows;
 }
 async function getAllInventarioByText(text) {
-    const allRows = await db.getAllAsync(`SELECT * FROM inventario WHERE descripcion LIKE '%${text}%' OR codigo_af LIKE '%${text}%' OR codigo_fisico LIKE '%${text}%' OR modelo LIKE '%${text}%' OR serie LIKE '%${text}%' OR marca LIKE '%${text}%' OR observaciones LIKE '%${text}%'`);
+    const allRows = await db.getAllAsync(`SELECT * FROM inventarios WHERE material LIKE '%${text}%' OR codigo_af LIKE '%${text}%' OR codigo_fisico LIKE '%${text}%' OR modelo LIKE '%${text}%' OR serie LIKE '%${text}%' OR marca LIKE '%${text}%' OR observaciones LIKE '%${text}%'`);
+    return allRows;
+}
+async function autocomplete(query) {
+    const allRows = await db.getAllAsync(`SELECT * FROM materiales WHERE codigo LIKE '%${query}%' ORDER BY material ASC;`);
+    return allRows;
+}
+async function getMaterialById(id) {
+    const allRows = await db.getFirstAsync(`SELECT * FROM materiales WHERE id = ${id};`);
+    return allRows;
+}
+async function getFromControl(id_sede, id_almacen, id_material) {
+    const allRows = await db.getFirstAsync(`SELECT * FROM control WHERE id_sede = ${id_sede} AND id_almacen = ${id_almacen} AND id_material = ${id_material};`);
     return allRows;
 }
 async function getDataGrafico(s, e, u) {
-    let query = "SELECT COUNT(i.id) cant, c.clasificacion FROM inventario i LEFT JOIN clasificacion c ON c.id = i.id_clasificacion WHERE 1 = 1 ";
+    let query = "SELECT COUNT(i.id) cant, c.clasificacion FROM inventarios i LEFT JOIN clasificacion c ON c.id = i.id_clasificacion WHERE 1 = 1 ";
 
     if (s == 0) {
     } else {
@@ -290,7 +353,7 @@ async function getDataGrafico(s, e, u) {
 
     if (e == 0) {
     } else {
-        query += ' AND i.id_emplazamiento = ' + e;
+        query += ' AND i.id_almacen = ' + e;
     }
     if (u == 0) {
     } else {
@@ -301,9 +364,13 @@ async function getDataGrafico(s, e, u) {
     return allRows;
 }
 async function getAllCuentas() {
-    const allRows = await db.getAllAsync(`SELECT DISTINCT cuenta FROM inventario;`);
+    const allRows = await db.getAllAsync(`SELECT DISTINCT cuenta FROM inventarios;`);
+    return allRows;
+}
+async function buscarMedidor(serie){
+    const allRows = await db.getFirstAsync(`SELECT c.marca, c.modelo, c.serie, m.codigo, m.material, c.cantidad, u.unidad, c.id_sede, c.id_almacen, c.id_material FROM control c JOIN materiales m ON m.id = c.id_material JOIN unidades u ON u.id = m.id_unidad WHERE c.serie = ${serie};`);
     return allRows;
 }
 export {
-    crearInventario, addInventario, addClasificacion, addEmplazamiento, addEstado, addSede, addUsuario, crearClasificacion, crearEmplazamiento, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountEmplazamiento, getCountSedes, getCountClasificacion, getCountEstado, getAllUsuarios, getAllSedes, getAllEmplazamientos, getAllEstado, getAllClasificacion, getInventarioById, getInventarioByIdLocal, updateInventario, getEmplazamientoByIdSede, getCountInventarioById, getSedeByID, getEmplazamientoByID, getEstadoByID, getClasificacionByID, getUsuarioByIdIdEmplazamiento, getAllInventarioFechaModificacion, getAllInventarioByText, getAllDistinctUsuarios, eliminarTablas, getAllClasificacionNuevo, getAllClasificacionEditar, getDataGrafico, getAllCuentas, updateNuevo, configureDatabase
+    crearInventarios, addInventario, addAlmacenes, addEstado, addSede, addUsuario, crearAlmacenes, crearEstado, crearSedes, crearUsuario, getCountInventario, getAllInventario, getCountUsuarios, getCountAlmacenes, getCountSedes, getCountEstado, getAllUsuarios, getAllSedes, getAllAlmacenes, getAllEstado, getInventarioById, getInventarioByIdLocal, updateInventario, getAlmacenByIdSede, getCountInventarioById, getSedeByID, getAlmacenByID, getEstadoByID, getUsuarioByIdIdAlmacen, getAllInventarioFechaModificacion, getAllInventarioByText, getAllDistinctUsuarios, eliminarTablas, getDataGrafico, getAllCuentas, updateNuevo, configureDatabase, crearControl, crearMateriales, crearUnidades, addUnidad, addMaterial, addControl, getCountUnidad, getAllControl, autocomplete, getFromControl, getMaterialById, getAllControlParams, buscarMedidor
 };

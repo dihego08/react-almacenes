@@ -42,7 +42,7 @@ export default class Login extends Component {
 			alert("Required Field Is Missing!!!");
 		} else {
 			console.log(Password);
-			var APIURL = "https://inventarios.site/servicios/servicios.php?parAccion=login";
+			var APIURL = "https://app.inventarios.site/servicios/servicios.php?parAccion=login";
 
 			try {
 				const formData = new FormData();
@@ -83,7 +83,7 @@ export default class Login extends Component {
 		/*------------------------*/
 		return (
 			<View style={styles.viewStyle}>
-				<Image style={styles.logo} source={require('../assets/imgs/logoeg.png')} />
+				<Image style={styles.logo} source={require('../assets/imgs/img.png')} />
 				<View style={styles.container}>
 					<View style={styles.action}>
 
