@@ -143,7 +143,7 @@ async function crearClasificacion() {
     );
 }
 async function addMaterial(data) {
-    const result = await db.runAsync(`INSERT INTO materiales(material, id_unidad, codigo, unidad) VALUES (?, ?, ?, ?)`, data);
+    const result = await db.runAsync(`INSERT INTO materiales(id, material, id_unidad, codigo, unidad) VALUES (?, ?, ?, ?, ?)`, data);
 }
 async function addInventario(data) {
     const result = await db.runAsync(`INSERT INTO inventarios (
@@ -227,7 +227,7 @@ async function getCountInventarioById(id) {
     return firstRow.cant;
 }
 async function getAllInventario() {
-    const allRows = await db.getAllAsync('SELECT * FROM inventarios ORDER BY material ASC');
+    const allRows = await db.getAllAsync('SELECT i.*, m.codigo FROM inventarios i JOIN materiales m ON m.id = i.id_material ORDER BY i.material ASC');
     return allRows;
 }
 async function getAllControl() {
@@ -331,8 +331,9 @@ async function getAllInventarioByText(text) {
     const allRows = await db.getAllAsync(`SELECT * FROM inventarios WHERE material LIKE '%${text}%' OR codigo_af LIKE '%${text}%' OR codigo_fisico LIKE '%${text}%' OR modelo LIKE '%${text}%' OR serie LIKE '%${text}%' OR marca LIKE '%${text}%' OR observaciones LIKE '%${text}%'`);
     return allRows;
 }
-async function autocomplete(query) {
-    const allRows = await db.getAllAsync(`SELECT * FROM materiales WHERE codigo LIKE '%${query}%' ORDER BY material ASC;`);
+async function autocomplete(query, id_sede, id_almacen) {
+    // console.log(`SELECT * FROM materiales WHERE codigo LIKE '%${query}%' AND id_sede = ${id_sede} AND id_almacen = ${id_almacen} ORDER BY material ASC;`);
+    const allRows = await db.getAllAsync(`SELECT c.*, m.unidad FROM control c JOIN materiales m ON m.id = c.id_material WHERE m.codigo LIKE '%${query}%' AND c.id_sede = ${id_sede} AND c.id_almacen = ${id_almacen} ORDER BY m.material ASC;`);
     return allRows;
 }
 async function getMaterialById(id) {
@@ -368,7 +369,14 @@ async function getAllCuentas() {
     return allRows;
 }
 async function buscarMedidor(serie){
+    console.log(serie);
     const allRows = await db.getFirstAsync(`SELECT c.marca, c.modelo, c.serie, m.codigo, m.material, c.cantidad, u.unidad, c.id_sede, c.id_almacen, c.id_material FROM control c JOIN materiales m ON m.id = c.id_material JOIN unidades u ON u.id = m.id_unidad WHERE c.serie = ${serie};`);
+    // const allRows = await db.getFirstAsync(`SELECT c.marca, c.modelo, c.serie, m.codigo, m.material, c.cantidad, c.id_sede, c.id_almacen, c.id_material FROM control c JOIN materiales m ON m.id = c.id_material WHERE c.serie = ${serie};`);
+    // const allRows = await db.getFirstAsync(`SELECT * FROM control c join materiales m ON m.id = c.id_material WHERE c.serie = ${serie};`);
+    // const allRows = await db.getAllAsync(`SELECT * FROM materiales;`);
+
+
+    console.log(allRows);
     return allRows;
 }
 export {

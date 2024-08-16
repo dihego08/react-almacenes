@@ -57,6 +57,7 @@ export default (props) => {
     const [show, setShow] = useState(false);
     const [loading, setLoading] = useState(false);
     const [inventariador, setInventariador] = useState(null);
+    const [hasPermission, setHasPermission] = useState(null);
 
     const [cameraPermissionInformation, requestPermission] =
         useCameraPermissions();
@@ -66,8 +67,14 @@ export default (props) => {
     const [results, setResults] = useState([]);
     const [scanned, setScanned] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
+    const getCameraPermissions = async () => {
+        const { status } = await Camera.requestCameraPermissionsAsync();
+        setHasPermission(status === 'granted');
+    };
 
+    
     useEffect(() => {
+        getCameraPermissions();
         const unsubscribe = NetInfo.addEventListener(async state => {
             setLoading(true);
             AsyncStorage.getItem('usuarioLogin').then((storedData) => {
@@ -86,6 +93,7 @@ export default (props) => {
         });
         return () => unsubscribe();
     }, []);
+
     const verifyMediaLibraryPermission = async () => {
         if (mediaLibraryPermissionInformation.status === PermissionStatus.UNDETERMINED) {
             const responseStatus = await requestMediaLibraryPermission();
@@ -200,18 +208,28 @@ export default (props) => {
         setModelo(resultado.modelo);
         setCantidad(resultado.cantidad);
         setIdMaterial(resultado.id_material);
-        /*setSelectedSede(resultado.id_sede);
-        handleSedeChange(resultado.id_sede);
-        setSelectedEmplazamiento(resultado.id_almacen);
-        handleAlmacenChange(resultado.id_almacen);*/
     }
     async function autocompletar(query) {
-        return await autocomplete(query);
+        if (selectedSede == null || (selectedAlmacen == null || selectedAlmacen == 0)) {
+            Alert.alert(
+                'Alerta',
+                'Se debe de seleccionar Sede y Almacén.',
+                [
+                    {
+                        text: 'OK',
+                        onPress: () => console.log('OK Pressed'),
+                    },
+                ],
+                { cancelable: false }
+            );
+            return [];
+        } else {
+            return await autocomplete(query, selectedSede, selectedAlmacen);
+        }
     }
     async function getData() {
         try {
             let producto = await getInventarioById(props.navigation.state.params.id);
-            console.log(producto);
 
             if (producto) {
                 const la_sede = await getSedeByID(producto.id_sede);
@@ -355,14 +373,9 @@ export default (props) => {
         setUnidad(item.unidad);
         setCodigo(item.codigo);
         setQuery(item.codigo);
-        setIdMaterial(item.id);
+        setIdMaterial(item.id_material);
         setResults([]);
-        let control = await getFromControl(selectedSede, selectedAlmacen, item.id);
-        if (control) {
-            setCantidad(control.cantidad);
-        } else {
-            setCantidad(0);
-        }
+        setCantidad(item.cantidad);
     }
     const closeCamera = () => {
         setShow(false);
@@ -565,8 +578,8 @@ export default (props) => {
                         </View>
                         :
                         foto && !photoUri ?
-                            <TouchableOpacity onPress={() => handleImagePress(FileSystem.documentDirectory + 'uploads/' + foto + '?rand=' + Math.random())}>
-                                <Image style={{ width: 200, height: 200 }} source={{ uri: FileSystem.documentDirectory + 'uploads/' + foto + '?rand=' + Math.random() }} />
+                            <TouchableOpacity onPress={() => handleImagePress('https://app.inventarios.site/servicios/uploads/' + foto + '?rand=' + Math.random())}>
+                                <Image style={{ width: 200, height: 200 }} source={{ uri: 'https://app.inventarios.site/servicios/uploads/' + foto + '?rand=' + Math.random() }} />
                             </TouchableOpacity> : ''
                     }
 

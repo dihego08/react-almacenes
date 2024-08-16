@@ -6,6 +6,7 @@ import * as FileSystem from 'expo-file-system';
 import LoadingModal from './LoadingModal';
 import { withNavigationFocus } from 'react-navigation';
 import ImageViewer from "./ImageViewer";
+
 import { getAllInventario, getAllSedes, getAllAlmacenes, getAllInventarioByText, configureDatabase } from "./db";
 
 const ScreeInventario = ({ navigation, isFocused }) => {
@@ -20,19 +21,18 @@ const ScreeInventario = ({ navigation, isFocused }) => {
     const [selectedImageUri, setSelectedImageUri] = useState(null);
     const [filteredControlAnt, setFilteredControlAnt] = useState(null);
     const [textoFiltro, setTextoFiltro] = useState(null);
+    
 
     useEffect(() => {
         if (isFocused) {
             fetchLocalSedes();
             configureDatabase();
+            
         }
     }, [isFocused]);
     const handleImagePress = (uri) => {
         setSelectedImageUri(uri);
         setIsImageViewerVisible(true);
-    };
-    const handlePress = () => {
-        console.log('Botón flotante presionado');
     };
     async function fetchLocalSedes() {
         const storedOptions = await getAllSedes();
@@ -94,9 +94,11 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                     const productosFiltrados = productosFiltradosCombo.filter(producto => {
                         const material = producto.material ? producto.material.toLowerCase() : '';
                         const searchText = text.toLowerCase();
+                        const codigo = producto.codigo ? producto.codigo.toLowerCase() : '';
 
                         return (
-                            (material.includes(searchText)) &&
+                            (material.includes(searchText) ||
+                                codigo.includes(searchText)) &&
                             producto.material != null
                         );
                     });
@@ -209,12 +211,13 @@ const ScreeInventario = ({ navigation, isFocused }) => {
                             <View style={styles.containerinfo}>
                                 <View style={styles.contenedorTexto}>
                                     <View style={styles.iconocirculo}>
-                                        <TouchableOpacity onPress={() => handleImagePress(FileSystem.documentDirectory + 'uploads/' + producto.foto)}>
-                                            <Image style={styles.imagenProducto} source={{ uri: FileSystem.documentDirectory + 'uploads/' + producto.foto + '?rand=' + Math.random() }} />
+                                        <TouchableOpacity onPress={() => handleImagePress('https://app.inventarios.site/servicios/uploads/' + producto.foto)}>
+                                            <Image style={styles.imagenProducto} source={{ uri: 'https://app.inventarios.site/servicios/uploads/' + producto.foto + '?rand=' + Math.random() }} />
                                         </TouchableOpacity>
                                     </View>
                                     <View style={styles.textoinfo}>
                                         <Text style={styles.texto1}>{producto.material}</Text>
+                                        <Text style={[styles.texto2, { color: "green" }]}>{producto.codigo}</Text>
                                         <Text style={styles.texto2}>{producto.sede}</Text>
                                         <Text style={styles.texto2}>{producto.almacen}</Text>
                                         <Text style={[styles.texto2, { color: '#313131' }]}>{producto.estado}</Text>

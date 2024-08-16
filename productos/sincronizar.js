@@ -211,9 +211,9 @@ export default () => {
             }
             for (const inventario of inventarios) {
                 const fotoExists = await checkFileExists(inventario.foto);
-                if (!fotoExists) {
+                /*if (!fotoExists) {
                     await downloadImage(inventario.foto);
-                }
+                }*/
                 if (flag == 1) {
                     if (await getCountInventarioById(inventario.id) == 0) {
                         await addInventario(
@@ -312,6 +312,7 @@ export default () => {
                 if (flag == 1) {
                     await addMaterial(
                         [
+                            material.id,
                             material.material,
                             material.id_unidad,
                             material.codigo,
