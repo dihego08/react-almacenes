@@ -52,13 +52,13 @@ export default () => {
             await eliminarTablas();
             await crearTablas();
 
-            await fetchUsuarios();
-            await fetchSedes();
-            await fetchEstado();
-            await fetchUnidades();
+            // await fetchUsuarios();
+            // await fetchSedes();
+            // await fetchEstado();
+            // await fetchUnidades();
             await fetchControles();
-            await fetchAlmacenes();
-            await fetchMateriales();
+            // await fetchAlmacenes();
+            // await fetchMateriales();
             await fetchInventario();
             setLoading(false);
             await mensajeExito('Descarga Exitosa');
@@ -238,7 +238,10 @@ export default () => {
                                 inventario.almacen,
                                 inventario.estado,
                                 inventario.material,
-                                0
+                                0,
+                                inventario.marca,
+                                inventario.modelo,
+                                inventario.serie
                             ]
                         );
                     }

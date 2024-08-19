@@ -10,13 +10,13 @@ async function configureDatabase() {
 async function eliminarTablas() {
     await db.execAsync(
         `DROP TABLE inventarios;
-        DROP TABLE estados;
+        DROP TABLE control;
+        /*DROP TABLE estados;
         DROP TABLE sedes;
         DROP TABLE almacenes;
         DROP TABLE usuarios;
-        DROP TABLE control;
         DROP TABLE unidades;
-        DROP TABLE materiales;`
+        DROP TABLE materiales;*/`
     );
 }
 async function crearControl() {
@@ -238,10 +238,10 @@ async function getAllControlParams(id_sede, id_almacen) {
     let str = '';
     if (id_almacen == 0 || id_almacen == "") {
         //str = `SELECT * FROM control WHERE id_sede = ${id_sede} ORDER BY material ASC`;
-        str = `SELECT *, total FROM control c LEFT JOIN (SELECT sum(conteo) total, id_material, id_sede, id_almacen from inventarios GROUP BY id_sede, id_almacen, id_material) aux ON aux.id_sede = c.id_sede and aux.id_almacen = c.id_almacen AND aux.id_material = c.id_material WHERE c.id_sede = ${id_sede} ORDER BY c.material ASC; `;
+        str = `SELECT *, total FROM control c LEFT JOIN (SELECT sum(conteo) total, id_material, id_sede, id_almacen, marca, modelo, serie from inventarios GROUP BY id_sede, id_almacen, id_material, marca, modelo, serie) aux ON aux.id_sede = c.id_sede and aux.id_almacen = c.id_almacen AND aux.id_material = c.id_material AND aux.marca = c.marca AND aux.modelo = c.modelo AND aux.serie = c.serie WHERE c.id_sede = ${id_sede} ORDER BY c.material ASC; `;
     } else {
         // str = `SELECT * FROM control WHERE id_sede = ${id_sede} AND id_almacen = ${id_almacen} ORDER BY material ASC`;
-        str = `SELECT *, total FROM control c LEFT JOIN (SELECT sum(conteo) total, id_material, id_sede, id_almacen from inventarios GROUP BY id_sede, id_almacen, id_material) aux ON aux.id_sede = c.id_sede and aux.id_almacen = c.id_almacen AND aux.id_material = c.id_material WHERE c.id_sede = ${id_sede} AND c.id_almacen = ${id_almacen} ORDER BY c.material ASC; `;
+        str = `SELECT *, total FROM control c LEFT JOIN (SELECT sum(conteo) total, id_material, id_sede, id_almacen, marca, modelo, serie from inventarios GROUP BY id_sede, id_almacen, id_material, marca, modelo, serie) aux ON aux.id_sede = c.id_sede and aux.id_almacen = c.id_almacen AND aux.id_material = c.id_material AND aux.marca = c.marca AND aux.modelo = c.modelo AND aux.serie = c.serie WHERE c.id_sede = ${id_sede} AND c.id_almacen = ${id_almacen} ORDER BY c.material ASC; `;
     }
     const allRows = await db.getAllAsync(str);
     return allRows;

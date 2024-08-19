@@ -67,12 +67,15 @@ export default (props) => {
     const [results, setResults] = useState([]);
     const [scanned, setScanned] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
+    const [textoFiltro, setTextoFiltro] = useState(null);
+
+
     const getCameraPermissions = async () => {
         const { status } = await Camera.requestCameraPermissionsAsync();
         setHasPermission(status === 'granted');
     };
 
-    
+
     useEffect(() => {
         getCameraPermissions();
         const unsubscribe = NetInfo.addEventListener(async state => {
@@ -208,6 +211,10 @@ export default (props) => {
         setModelo(resultado.modelo);
         setCantidad(resultado.cantidad);
         setIdMaterial(resultado.id_material);
+        setModalVisible(false);
+        setScanned(true);
+        //setQuery(data);
+        setSerie(value);
     }
     async function autocompletar(query) {
         if (selectedSede == null || (selectedAlmacen == null || selectedAlmacen == 0)) {
@@ -553,6 +560,12 @@ export default (props) => {
         buscarPorSerie(data);
         setModalVisible(false);
     };
+    const handleTextChange = async (text) => {
+        // setLoading(true);
+        setTextoFiltro(text);
+        // buscarPorSerie(text)
+        // setLoading(false);
+    }
     return (
         <View style={styles.viewStyle}>
             <View style={styles.encabezado}>
@@ -789,40 +802,6 @@ export default (props) => {
                             />
                         </View>
                     </View>
-                    {/*<View style={styles.action}>
-                        <View style={styles.action2}>
-                            <Text style={styles.label}>Serie:</Text>
-                            <TextInput
-                                placeholder="Serie"
-                                placeholderTextColor="#B2BABB"
-                                style={styles.textInput}
-                                value={serie ? serie : ''}
-                                onChangeText={text => setSerie(text)}
-                            />
-                        </View>
-                        <View style={styles.action2}>
-                            <Text style={styles.label}>Medida:</Text>
-                            <TextInput
-                                placeholder="Medida"
-                                placeholderTextColor="#B2BABB"
-                                style={styles.textInput}
-                                value={medida ? medida : ''}
-                                onChangeText={text => setMedida(text)}
-                            />
-                        </View>
-                    </View>*/}
-                    {/*<View style={styles.action}>
-                        <View style={styles.action2}>
-                            <Text style={styles.label}>Color:</Text>
-                            <TextInput
-                                placeholder="Color"
-                                placeholderTextColor="#B2BABB"
-                                style={styles.textInput}
-                                value={color ? color : ''}
-                                onChangeText={text => setColor(text)}
-                            />
-                        </View>
-                    </View>*/}
                     <View style={styles.action}>
                         <View style={styles.action3}>
                             <Text style={styles.label}>Serie:</Text>
@@ -885,11 +864,25 @@ export default (props) => {
             >
                 <View style={styles.modalContainer}>
                     <View style={styles.cameraContainer}>
+                        <View style={styles.action}>
+                            <TextInput
+                                placeholder="Digite para filtrar"
+                                placeholderTextColor="#B2BABB"
+                                style={styles.textInput}
+                                onChangeText={handleTextChange}
+                            />
+                            <View style={styles.iconocirculo}>
+                                <MaterialIcons name='search' style={styles.iconos} onPress={() => buscarPorSerie(textoFiltro)} disabled={loading} />
+                            </View>
+                            <View style={styles.iconocirculo}>
+                                <MaterialIcons name='close' style={styles.iconos} onPress={() => setModalVisible(false)} />
+                            </View>
+                        </View>
                         <BarCodeScanner
                             onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
                             style={styles.camera2}
                         />
-                        <Button title="Cerrar" style={styles.closeButton} onPress={() => setModalVisible(false)} />
+
                     </View>
                 </View>
             </Modal>
